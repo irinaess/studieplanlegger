@@ -58,3 +58,8 @@ export function countdownText(days: number): string {
   if (days === 1) return 'i morgen'
   return `${days} dager igjen`
 }
+
+/** Kort dato og klokkeslett i norsk tid, f.eks. "fre 2. okt. 23:59". */
+export function formatShortDateTime(date: Date | string): string {
+  return format(toOslo(date), 'EEE d. MMM HH:mm', { locale: nb })
+}

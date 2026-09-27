@@ -15,13 +15,13 @@ export default function App() {
     <div className="mx-auto max-w-5xl px-4 py-6 sm:px-8 sm:py-10">
       <Header />
 
-      <main className="mt-10 space-y-12 sm:mt-14">
+      <main className="mt-6 space-y-12">
+        <DeadlineStrip tasks={tasks} subjects={subjects} now={now} />
+
         <div className="space-y-6">
           <Greeting now={now} name="Iris" />
           <ExamCountdowns exams={exams} subjects={subjects} now={now} />
         </div>
-
-        <DeadlineStrip tasks={tasks} subjects={subjects} now={now} />
 
         <div className="grid gap-6 md:grid-cols-[3fr_2fr]">
           <TodayCard />

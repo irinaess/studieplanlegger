@@ -30,3 +30,11 @@ export interface Exam {
   date: string // ISO-tidspunkt
   location?: string
 }
+
+/** Norske navn på oppgavetypene, til visning. */
+export const TASK_TYPE_LABELS: Record<TaskType, string> = {
+  oblig: 'Oblig / innlevering',
+  ovinger: 'Øvingsoppgaver',
+  lesing: 'Lesing',
+  annet: 'Annet',
+}

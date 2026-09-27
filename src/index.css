@@ -6,8 +6,9 @@
  * `border-line`, `font-serif`. Endrer vi en farge her, endres den overalt.
  */
 @theme {
-  --color-paper: #efe9e1; /* bakgrunn */
-  --color-card: #f7f3ee; /* litt lysere flate for kort */
+  --color-paper: #faf8f5; /* bakgrunn: varm nesten-hvit */
+  --color-card: #efe9e1; /* flater og kort som trenger kontrast mot bakgrunnen */
+  --color-surface: #fffefc; /* lyse, klikkbare kort (f.eks. frister) */
   --color-ink: #322d29; /* hovedtekst */
   --color-muted: #75665a; /* dempet tekst (mørk taupe, god kontrast) */
   --color-burgundy: #72383d;

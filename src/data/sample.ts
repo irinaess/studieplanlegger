@@ -20,6 +20,7 @@ export const tasks: Task[] = [
   { id: 't1', subjectId: 'mat111', title: 'Oblig 3', type: 'oblig', estimateMinutes: 360, deadline: inDays(1, 14, 0), starred: true, subtasksDone: 4, subtasksTotal: 7 },
   { id: 't2', subjectId: 'info132', title: 'Lab 5', type: 'oblig', estimateMinutes: 180, deadline: inDays(4), starred: false, subtasksDone: 1, subtasksTotal: 3 },
   { id: 't3', subjectId: 'itok101', title: 'Seminaroppgaver uke 40', type: 'ovinger', estimateMinutes: 150, deadline: inDays(6, 10, 15), starred: false },
+  { id: 't5', subjectId: 'mat111', title: 'Øvingssett 6', type: 'ovinger', estimateMinutes: 240, deadline: inDays(8, 12, 0), starred: false },
   { id: 't4', subjectId: 'itok101', title: 'Innlevering 2', type: 'oblig', estimateMinutes: 300, deadline: inDays(11), starred: false, subtasksDone: 0, subtasksTotal: 4 },
 ]
 

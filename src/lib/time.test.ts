@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { countdownText, daysUntil, formatLongDate, greetingFor, toOslo, weekNumber } from './time'
+import { countdownText, daysUntil, formatLongDate, formatShortDateTime, greetingFor, toOslo, weekNumber } from './time'
 
 describe('greetingFor', () => {
   it('gir riktig hilsen på grensene', () => {
@@ -43,5 +43,11 @@ describe('nedtelling', () => {
     expect(countdownText(1)).toBe('i morgen')
     expect(countdownText(4)).toBe('4 dager igjen')
     expect(countdownText(-1)).toBe('gikk ut i går')
+  })
+})
+
+describe('formatShortDateTime', () => {
+  it('viser kort norsk dato og 24-timersklokke', () => {
+    expect(formatShortDateTime('2026-10-02T21:59:00Z')).toBe('fre 2. okt. 23:59')
   })
 })
