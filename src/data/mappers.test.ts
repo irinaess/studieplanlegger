@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { subjectShares } from '../lib/subjects'
-import { rowToSettings, rowToSubject, settingsToRow, type SettingsRow } from './mappers'
+import { eventToRow, rowToEvent, rowToSettings, rowToSubject, settingsToRow, type SettingsRow } from './mappers'
 
 const settingsRow: SettingsRow = {
   display_name: 'Iris',
@@ -45,5 +45,29 @@ describe('subjectShares', () => {
       { ...base, id: 'd', code: 'D', weight: 5, archived: true },
     ])
     expect(shares).toEqual({ a: 0.4, b: 0.4, c: 0.2 })
+  })
+})
+
+describe('hendelser', () => {
+  const row = {
+    id: 'e1', subject_id: 's1', title: 'Forelesning', location: 'Auditorium 1', kind: 'recurring' as const,
+    weekday: 1, date: null, start_time: '08:15:00', end_time: '10:00:00', valid_from: null, valid_until: '2026-11-20',
+    counts_as_study: true, source: 'manual' as const,
+  }
+
+  it('leser klokkeslett uten sekunder', () => {
+    const e = rowToEvent(row)
+    expect([e.startTime, e.endTime]).toEqual(['08:15', '10:00'])
+  })
+
+  it('fjerner ukedag og periode når en hendelse gjøres om til engangs', () => {
+    const e = { ...rowToEvent(row), kind: 'once' as const, date: '2026-10-05' }
+    const out = eventToRow(e)
+    expect(out).toMatchObject({ kind: 'once', date: '2026-10-05', weekday: null, valid_until: null })
+  })
+
+  it('fjerner dato fra faste hendelser, og tomt sted blir null', () => {
+    const out = eventToRow({ ...rowToEvent(row), date: '2026-10-05', location: '  ' })
+    expect(out).toMatchObject({ kind: 'recurring', weekday: 1, date: null, location: null })
   })
 })

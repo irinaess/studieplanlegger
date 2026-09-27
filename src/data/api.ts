@@ -7,8 +7,18 @@
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
-import type { Settings, Subject } from '../types'
-import { rowToSettings, rowToSubject, settingsToRow, subjectToRow, type SettingsRow, type SubjectRow } from './mappers'
+import type { CalendarEvent, Settings, Subject } from '../types'
+import {
+  eventToRow,
+  rowToEvent,
+  rowToSettings,
+  rowToSubject,
+  settingsToRow,
+  subjectToRow,
+  type EventRow,
+  type SettingsRow,
+  type SubjectRow,
+} from './mappers'
 
 /** Supabase gir { data, error }. Denne gjør en feil om til et unntak TanStack Query forstår. */
 function unwrap<T>({ data, error }: { data: T | null; error: { message: string } | null }): T {
@@ -58,5 +68,39 @@ export function useSaveSettings() {
       unwrap(await supabase.from('settings').upsert(settingsToRow(settings)))
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['settings'] }),
+  })
+}
+
+// ---------- Kalenderhendelser ----------
+
+/** Alle hendelser. Det blir ikke mange (et par hundre i et semester), så vi henter alt. */
+export function useEvents() {
+  return useQuery({
+    queryKey: ['events'],
+    queryFn: async () => unwrap<EventRow[]>(await supabase.from('events').select('*').order('start_time')).map(rowToEvent),
+  })
+}
+
+export type EventDraft = Omit<CalendarEvent, 'id'> & { id?: string }
+
+export function useSaveEvent() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (event: EventDraft) => {
+      const row = eventToRow(event)
+      if (event.id) unwrap(await supabase.from('events').update(row).eq('id', event.id))
+      else unwrap(await supabase.from('events').insert(row))
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['events'] }),
+  })
+}
+
+export function useDeleteEvent() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      unwrap(await supabase.from('events').delete().eq('id', id))
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['events'] }),
   })
 }

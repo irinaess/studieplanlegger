@@ -70,6 +70,11 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
   }
+  /* Tydelig, men rolig fokusramme for tastaturbrukere */
+  :focus-visible {
+    outline: 2px solid var(--color-burgundy);
+    outline-offset: 2px;
+  }
   /* Tall med lik bredde og lik høyde, så nedtellinger ikke «hopper».
      (Cormorant har ellers "gammeldagse" tall som går over og under linjen.) */
   .tabular {

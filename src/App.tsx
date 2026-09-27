@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router'
 import { Header } from './components/Header'
 import { useSession } from './hooks/useSession'
 import { isSupabaseConfigured, supabase } from './lib/supabase'
+import { CalendarPage } from './pages/CalendarPage'
 import { ComingSoonPage } from './pages/ComingSoonPage'
 import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
@@ -27,7 +28,7 @@ export default function App() {
       <Routes>
         <Route element={<Layout />}>
           <Route index element={<HomePage />} />
-          <Route path="kalender" element={<ComingSoonPage title="Kalender" step={3} />} />
+          <Route path="kalender" element={<CalendarPage />} />
           <Route path="oppgaver" element={<ComingSoonPage title="Oppgaver" step={4} />} />
           <Route path="statistikk" element={<ComingSoonPage title="Statistikk" step={7} />} />
           <Route path="eksamen" element={<ComingSoonPage title="Eksamen" step={8} />} />

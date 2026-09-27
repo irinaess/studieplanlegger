@@ -6,7 +6,7 @@
  * Ved å samle oversettingen her, trenger resten av appen aldri å vite
  * hvordan tabellene ser ut.
  */
-import type { Settings, Subject } from '../types'
+import type { CalendarEvent, Settings, Subject } from '../types'
 
 export interface SubjectRow {
   id: string
@@ -88,5 +88,61 @@ export function settingsToRow(s: Settings): SettingsRow {
     exam_mode_weeks: s.examModeWeeks,
     exam_weekly_goal_hours: s.examWeeklyGoalHours,
     semester_start: s.semesterStart || null,
+  }
+}
+
+export interface EventRow {
+  id: string
+  subject_id: string | null
+  title: string
+  location: string | null
+  kind: 'recurring' | 'once'
+  weekday: number | null
+  date: string | null
+  start_time: string
+  end_time: string
+  valid_from: string | null
+  valid_until: string | null
+  counts_as_study: boolean
+  source: 'manual' | 'ical'
+}
+
+export function rowToEvent(row: EventRow): CalendarEvent {
+  return {
+    id: row.id,
+    subjectId: row.subject_id,
+    title: row.title,
+    location: row.location,
+    kind: row.kind,
+    weekday: row.weekday,
+    date: row.date,
+    startTime: hhmm(row.start_time),
+    endTime: hhmm(row.end_time),
+    validFrom: row.valid_from,
+    validUntil: row.valid_until,
+    countsAsStudy: row.counts_as_study,
+    source: row.source,
+  }
+}
+
+/**
+ * Feltene vi sender når en hendelse lagres. En fast hendelse har ukedag og ingen
+ * dato, en engangshendelse har dato og ingen ukedag eller gyldighetsperiode.
+ */
+export function eventToRow(e: Omit<CalendarEvent, 'id'>) {
+  const recurring = e.kind === 'recurring'
+  return {
+    subject_id: e.subjectId || null,
+    title: e.title.trim(),
+    location: e.location?.trim() || null,
+    kind: e.kind,
+    weekday: recurring ? e.weekday : null,
+    date: recurring ? null : e.date,
+    start_time: e.startTime,
+    end_time: e.endTime,
+    valid_from: recurring ? e.validFrom || null : null,
+    valid_until: recurring ? e.validUntil || null : null,
+    counts_as_study: e.countsAsStudy,
+    source: e.source,
   }
 }

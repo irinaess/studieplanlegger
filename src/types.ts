@@ -41,6 +41,29 @@ export interface Task {
   subtasksTotal?: number
 }
 
+/**
+ * En hendelse i kalenderen.
+ *  - recurring: gjentas hver uke på `weekday` (1 = mandag … 7 = søndag),
+ *    eventuelt bare mellom `validFrom` og `validUntil`
+ *  - once: gjelder bare på `date`
+ * Datoer er "yyyy-MM-dd" og klokkeslett "HH:mm", alltid i norsk tid.
+ */
+export interface CalendarEvent {
+  id: string
+  subjectId: string | null
+  title: string
+  location: string | null
+  kind: 'recurring' | 'once'
+  weekday: number | null
+  date: string | null
+  startTime: string
+  endTime: string
+  validFrom: string | null
+  validUntil: string | null
+  countsAsStudy: boolean
+  source: 'manual' | 'ical'
+}
+
 export interface Exam {
   subjectId: string
   date: string // ISO-tidspunkt
