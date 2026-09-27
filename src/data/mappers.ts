@@ -6,7 +6,7 @@
  * Ved å samle oversettingen her, trenger resten av appen aldri å vite
  * hvordan tabellene ser ut.
  */
-import type { CalendarEvent, Settings, Subject, Subtask, Task } from '../types'
+import type { CalendarEvent, DayPlan, DayPlanSession, Settings, Subject, Subtask, Task } from '../types'
 
 export interface SubjectRow {
   id: string
@@ -204,5 +204,63 @@ export function taskToRow(t: Omit<Task, 'id' | 'subtasks'>) {
     move_count: t.moveCount,
     notes: t.notes?.trim() || null,
     completed_at: t.completedAt,
+  }
+}
+
+export interface PlanSessionRow {
+  id: string
+  kind: DayPlanSession['kind']
+  subject_id: string
+  task_id: string | null
+  start_at: string
+  end_at: string
+  planned_minutes: number
+  actual_minutes: number | null
+  status: DayPlanSession['status']
+}
+
+export interface DayPlanRow {
+  id: string
+  date: string
+  start_time: string
+  end_time: string
+  energy: DayPlan['energy']
+  priority_text: string | null
+  stopped_at: string | null
+  plan_sessions: PlanSessionRow[]
+}
+
+/**
+ * "Dagens prioritet" og advarslene lagres i samme tekstfelt: første linje er
+ * forklaringen, hver linje etter er en advarsel. Da slipper vi en ekstra kolonne.
+ */
+export function joinPriority(priority: string, warnings: string[]): string {
+  return [priority, ...warnings].join('\n')
+}
+
+export function rowToDayPlan(row: DayPlanRow): DayPlan {
+  const [priority = '', ...warnings] = (row.priority_text ?? '').split('\n')
+  return {
+    id: row.id,
+    date: row.date,
+    startTime: hhmm(row.start_time),
+    endTime: hhmm(row.end_time),
+    energy: row.energy,
+    priority,
+    warnings: warnings.filter(Boolean),
+    stoppedAt: row.stopped_at,
+    sessions: (row.plan_sessions ?? [])
+      .map((r) => ({
+        id: r.id,
+        kind: r.kind,
+        subjectId: r.subject_id,
+        taskId: r.task_id,
+        startAt: r.start_at,
+        endAt: r.end_at,
+        plannedMinutes: r.planned_minutes,
+        actualMinutes: r.actual_minutes,
+        status: r.status,
+      }))
+      .sort((a, b) => a.startAt.localeCompare(b.startAt)),
   }
 }

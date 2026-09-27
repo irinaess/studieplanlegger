@@ -1,8 +1,8 @@
 /**
- * Eksempeldata for det som ikke er ekte ennå: eksamener (steg 8), dagsplan (steg 5)
- * og timer (steg 6–7). Fag, innstillinger, hendelser og oppgaver kommer fra Supabase.
+ * Eksempeldata for det som ikke er ekte ennå: eksamener (steg 8), timer og streak
+ * (steg 6–7). Alt annet kommer fra Supabase.
  */
-import type { Exam, PlanBlock, Subject } from '../types'
+import type { Exam, Subject } from '../types'
 
 export const subjects: Subject[] = [
   { id: 'mat111', code: 'MAT111', name: 'Kalkulus', color: '#72383D', weight: 4, weeklyGoalHours: 15 },
@@ -34,31 +34,11 @@ export const hoursByDay: Record<string, number>[] = [
   {},
 ]
 
-/** Eksempel på en dagsplan. Lages av planleggingsalgoritmen i steg 5. */
-export const dayPlan: PlanBlock[] = [
-  { start: '08:15', end: '10:00', kind: 'event', subjectId: 'mat111', title: 'Forelesning', status: 'done' },
-  { start: '10:15', end: '11:05', kind: 'task', subjectId: 'mat111', title: 'Oblig 3 · oppgave 5', status: 'done' },
-  { start: '11:05', end: '11:15', kind: 'pause', title: 'Pause' },
-  { start: '11:15', end: '12:05', kind: 'task', subjectId: 'mat111', title: 'Oblig 3 · oppgave 6', status: 'done' },
-  { start: '12:05', end: '12:35', kind: 'lunch', title: 'Lunsj' },
-  { start: '12:35', end: '13:25', kind: 'subject', subjectId: 'itok101', title: 'Fagøkt', status: 'done' },
-  { start: '13:25', end: '13:35', kind: 'pause', title: 'Pause' },
-  { start: '13:35', end: '14:25', kind: 'subject', subjectId: 'itok101', title: 'Fagøkt', status: 'active' },
-  { start: '14:25', end: '14:35', kind: 'pause', title: 'Pause' },
-  { start: '14:35', end: '15:25', kind: 'task', subjectId: 'info132', title: 'Lab 5 · del 2', status: 'planned' },
-  { start: '15:25', end: '15:35', kind: 'pause', title: 'Pause' },
-  { start: '15:35', end: '16:00', kind: 'subject', subjectId: 'itok101', title: 'Lesing kap. 4', status: 'planned' },
-]
-
-/** Kort forklaring på hvorfor dagen ser ut som den gjør (lages av algoritmen i steg 5). */
-export const dayPriority =
-  'MAT111 har frist i morgen, så dagen startet med Oblig 3 mens energien var høy. ITØK101 får ettermiddagen, fordi faget ligger litt bak ukemålet.'
-
 /**
  * Eksempeldataene over bruker egne fag-id-er ('mat111' osv.). Når fagene kommer
  * fra databasen, har de andre id-er. Denne funksjonen kobler eksempeldataene til
  * de ekte fagene via fagkoden, og dropper det som ikke har et matchende fag.
- * Midlertidig: forsvinner når oppgaver, kalender og planer er ekte (steg 3–5).
+ * Midlertidig: forsvinner når timer og eksamener er ekte (steg 6–8).
  */
 export function sampleFor(realSubjects: Subject[]) {
   const idByCode = new Map(realSubjects.map((s) => [s.code, s.id]))
@@ -68,7 +48,6 @@ export function sampleFor(realSubjects: Subject[]) {
 
   return {
     exams: exams.flatMap((e) => (realId(e.subjectId) ? [{ ...e, subjectId: realId(e.subjectId)! }] : [])),
-    dayPlan: dayPlan.flatMap((b) => (!b.subjectId ? [b] : realId(b.subjectId) ? [{ ...b, subjectId: realId(b.subjectId)! }] : [])),
     hoursThisWeek: remapKeys(hoursThisWeek),
     hoursByDay: hoursByDay.map(remapKeys),
   }

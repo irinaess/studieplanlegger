@@ -7,10 +7,15 @@
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
+import { minutesToClock } from '../lib/calendar'
+import type { Energy, PlanOutput } from '../lib/planner/types'
 import { diffSubtasks } from '../lib/tasks'
-import type { CalendarEvent, Settings, Subject, Task, TaskDraft } from '../types'
+import { osloToIso } from '../lib/time'
+import type { CalendarEvent, DayPlan, Settings, Subject, Task, TaskDraft } from '../types'
 import {
   eventToRow,
+  joinPriority,
+  rowToDayPlan,
   rowToEvent,
   rowToSettings,
   rowToSubject,
@@ -18,6 +23,7 @@ import {
   settingsToRow,
   subjectToRow,
   taskToRow,
+  type DayPlanRow,
   type EventRow,
   type SettingsRow,
   type SubjectRow,
@@ -190,5 +196,85 @@ export function useDeleteTask() {
       unwrap(await supabase.from('tasks').delete().eq('id', id)) // deloppgavene slettes automatisk (on delete cascade)
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tasks'] }),
+  })
+}
+
+// ---------- Dagsplan ----------
+
+/** Planen for en dato (eller null hvis dagen ikke er startet), med øktene. */
+export function useDayPlan(date: string) {
+  return useQuery({
+    queryKey: ['dayPlan', date],
+    queryFn: async () => {
+      const row = unwrap<DayPlanRow | null>(await supabase.from('day_plans').select('*, plan_sessions(*)').eq('date', date).maybeSingle())
+      return row ? rowToDayPlan(row) : null
+    },
+  })
+}
+
+/**
+ * Lagrer en ny plan, eller lager planen på nytt fra et tidspunkt.
+ * Ved ny plan midt på dagen beholdes øktene som allerede er over; bare planlagte
+ * økter som ikke er ferdige ennå byttes ut.
+ */
+export function useSaveDayPlan() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (args: { date: string; start: string; end: string; energy: Energy; output: PlanOutput; existing: DayPlan | null; nowIso: string }) => {
+      const { date, output, existing } = args
+      const priority_text = joinPriority(output.priority, output.warnings)
+      let planId = existing?.id
+
+      if (planId) {
+        unwrap(await supabase.from('day_plans').update({ end_time: args.end, energy: args.energy, priority_text, stopped_at: null }).eq('id', planId))
+        unwrap(await supabase.from('plan_sessions').delete().eq('day_plan_id', planId).eq('status', 'planned').gt('end_at', args.nowIso))
+      } else {
+        planId = unwrap<{ id: string }>(
+          await supabase.from('day_plans').insert({ date, start_time: args.start, end_time: args.end, energy: args.energy, priority_text }).select('id').single(),
+        ).id
+      }
+
+      if (output.sessions.length) {
+        unwrap(
+          await supabase.from('plan_sessions').insert(
+            output.sessions.map((s) => ({
+              day_plan_id: planId,
+              kind: s.kind,
+              subject_id: s.subjectId,
+              task_id: s.taskId,
+              start_at: osloToIso(date, minutesToClock(s.start)),
+              end_at: osloToIso(date, minutesToClock(s.end)),
+              planned_minutes: s.end - s.start,
+            })),
+          ),
+        )
+      }
+    },
+    onSuccess: (_data, args) => queryClient.invalidateQueries({ queryKey: ['dayPlan', args.date] }),
+  })
+}
+
+/**
+ * "Jeg må gi meg for i dag": resten av dagens økter markeres som flyttet, og hver
+ * oppgave som hadde en oppgaveøkt igjen, får flyttetelleren økt med én.
+ * Arbeidet dukker opp igjen i morgendagens plan, fordi planen alltid regnes ut fra det som gjenstår.
+ */
+export function useStopDay() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ plan, tasks, nowIso }: { plan: DayPlan; tasks: Task[]; nowIso: string }) => {
+      const remaining = plan.sessions.filter((s) => s.status === 'planned' && s.endAt > nowIso)
+      if (remaining.length) unwrap(await supabase.from('plan_sessions').update({ status: 'moved' }).in('id', remaining.map((s) => s.id)))
+
+      const movedTaskIds = new Set(remaining.filter((s) => s.kind === 'task' && s.taskId).map((s) => s.taskId!))
+      for (const task of tasks.filter((t) => movedTaskIds.has(t.id))) {
+        unwrap(await supabase.from('tasks').update({ move_count: task.moveCount + 1 }).eq('id', task.id))
+      }
+      unwrap(await supabase.from('day_plans').update({ stopped_at: nowIso }).eq('id', plan.id))
+    },
+    onSuccess: (_data, { plan }) => {
+      queryClient.invalidateQueries({ queryKey: ['dayPlan', plan.date] })
+      queryClient.invalidateQueries({ queryKey: ['tasks'] })
+    },
   })
 }

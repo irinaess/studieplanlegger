@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { subjectShares } from '../lib/subjects'
-import { eventToRow, rowToEvent, rowToTask, taskToRow, rowToSettings, rowToSubject, settingsToRow, type SettingsRow } from './mappers'
+import { eventToRow, joinPriority, rowToDayPlan, rowToEvent, rowToTask, taskToRow, rowToSettings, rowToSubject, settingsToRow, type SettingsRow } from './mappers'
 
 const settingsRow: SettingsRow = {
   display_name: 'Iris',
@@ -85,5 +85,22 @@ describe('oppgaver', () => {
     expect(t.subtasks.map((s) => s.id)).toEqual(['a', 'b'])
     const row = taskToRow({ ...t, estimateMinutes: 89.6 })
     expect(row).toMatchObject({ title: 'Oblig 3', estimate_minutes: 90, notes: null })
+  })
+})
+
+describe('dagsplan', () => {
+  it('skiller forklaring og advarsler, og sorterer øktene', () => {
+    const plan = rowToDayPlan({
+      id: 'p', date: '2026-09-28', start_time: '08:00:00', end_time: '16:00:00', energy: 'high', stopped_at: null,
+      priority_text: joinPriority('MAT111 før lunsj.', ['Oblig 3 trenger mer tid.']),
+      plan_sessions: [
+        { id: 'b', kind: 'subject', subject_id: 's', task_id: null, start_at: '2026-09-28T08:00:00Z', end_at: '2026-09-28T08:50:00Z', planned_minutes: 50, actual_minutes: null, status: 'planned' },
+        { id: 'a', kind: 'task', subject_id: 's', task_id: 't', start_at: '2026-09-28T06:00:00Z', end_at: '2026-09-28T06:50:00Z', planned_minutes: 50, actual_minutes: null, status: 'planned' },
+      ],
+    })
+    expect(plan.priority).toBe('MAT111 før lunsj.')
+    expect(plan.warnings).toEqual(['Oblig 3 trenger mer tid.'])
+    expect(plan.sessions.map((s) => s.id)).toEqual(['a', 'b'])
+    expect(plan.startTime).toBe('08:00')
   })
 })

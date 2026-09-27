@@ -107,6 +107,35 @@ export interface PlanBlock {
   end: string
   kind: PlanBlockKind
   subjectId?: string
+  taskId?: string | null
   title: string
-  status?: 'done' | 'active' | 'planned'
+  status?: 'done' | 'active' | 'planned' | 'past' | 'moved'
+}
+
+export type SessionStatus = 'planned' | 'done' | 'partial' | 'skipped' | 'moved'
+
+/** En lagret økt i dagsplanen. */
+export interface DayPlanSession {
+  id: string
+  kind: 'task' | 'subject' | 'review'
+  subjectId: string
+  taskId: string | null
+  startAt: string // ISO-tidspunkt
+  endAt: string
+  plannedMinutes: number
+  actualMinutes: number | null
+  status: SessionStatus
+}
+
+/** Dagens plan slik den er lagret: valgene fra morgenen, forklaringen og øktene. */
+export interface DayPlan {
+  id: string
+  date: string
+  startTime: string // "HH:mm"
+  endTime: string
+  energy: 'low' | 'normal' | 'high'
+  priority: string
+  warnings: string[]
+  stoppedAt: string | null
+  sessions: DayPlanSession[]
 }
