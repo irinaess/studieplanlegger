@@ -1,0 +1,35 @@
+@import 'tailwindcss';
+
+/*
+ * Design-systemet: alle farger og fonter er definert her, ett sted.
+ * Tailwind lager klasser automatisk av disse, f.eks. `bg-paper`, `text-ink`,
+ * `border-line`, `font-serif`. Endrer vi en farge her, endres den overalt.
+ */
+@theme {
+  --color-paper: #efe9e1; /* bakgrunn */
+  --color-card: #f7f3ee; /* litt lysere flate for kort */
+  --color-ink: #322d29; /* hovedtekst */
+  --color-muted: #75665a; /* dempet tekst (mørk taupe, god kontrast) */
+  --color-burgundy: #72383d;
+  --color-taupe: #ac9c8d;
+  --color-sand: #d1c7bd;
+  --color-line: #d9d9d9;
+  --color-navy: #3e4a5c;
+
+  --font-script: 'Pinyon Script', cursive;
+  --font-serif: 'Cormorant Garamond', Georgia, serif;
+  --font-sans: 'Lato', system-ui, sans-serif;
+}
+
+@layer base {
+  html {
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  /* Tall med lik bredde, så nedtellinger ikke «hopper» */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
