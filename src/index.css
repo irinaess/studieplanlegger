@@ -17,6 +17,10 @@
   --color-line: #d9d9d9;
   --color-navy: #3e4a5c;
 
+  /* Myke skygger til kort som ligger "oppå" bakgrunnen */
+  --shadow-soft: 0 1px 2px rgba(50, 45, 41, 0.04), 0 12px 32px -12px rgba(50, 45, 41, 0.18);
+  --shadow-lift: 0 10px 24px -10px rgba(50, 45, 41, 0.5);
+
   --font-script: 'Pinyon Script', cursive;
   --font-serif: 'Cormorant Garamond', Georgia, serif;
   --font-sans: 'Lato', system-ui, sans-serif;

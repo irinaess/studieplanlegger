@@ -63,3 +63,9 @@ export function countdownText(days: number): string {
 export function formatShortDateTime(date: Date | string): string {
   return format(toOslo(date), 'EEE d. MMM HH:mm', { locale: nb })
 }
+
+/** Klokkeslett "HH:mm" til minutter etter midnatt, f.eks. "10:15" → 615. */
+export function clockToMinutes(hhmm: string): number {
+  const [h, m] = hhmm.split(':').map(Number)
+  return h * 60 + m
+}

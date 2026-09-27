@@ -38,3 +38,21 @@ export const TASK_TYPE_LABELS: Record<TaskType, string> = {
   lesing: 'Lesing',
   annet: 'Annet',
 }
+
+/**
+ * En blokk i dagsplanen.
+ *  - event:   fast hendelse (forelesning, seminar)
+ *  - task:    oppgaveøkt, knyttet til en bestemt oppgave
+ *  - subject: fagøkt, godkjent når nok tid er logget i faget
+ *  - pause / lunch
+ */
+export type PlanBlockKind = 'event' | 'task' | 'subject' | 'pause' | 'lunch'
+
+export interface PlanBlock {
+  start: string // "10:15"
+  end: string
+  kind: PlanBlockKind
+  subjectId?: string
+  title: string
+  status?: 'done' | 'active' | 'planned'
+}

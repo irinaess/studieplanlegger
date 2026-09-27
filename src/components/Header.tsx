@@ -3,7 +3,7 @@ const links = ['Oversikt', 'Kalender', 'Oppgaver', 'Statistikk', 'Eksamen', 'Inn
 /** Toppmeny. Sidene kobles på i senere steg, nå er bare "Oversikt" aktiv. */
 export function Header() {
   return (
-    <header className="flex flex-wrap items-center justify-between gap-4 border-b border-line pb-4">
+    <header className="flex flex-wrap items-center justify-between gap-4 motion-safe:animate-fade">
       <span className="font-serif text-lg tracking-wide">Studieplanlegger</span>
       <nav className="-mx-3 flex flex-wrap text-sm">
         {links.map((label, i) => (
