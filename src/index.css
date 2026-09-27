@@ -20,6 +20,43 @@
   --font-script: 'Pinyon Script', cursive;
   --font-serif: 'Cormorant Garamond', Georgia, serif;
   --font-sans: 'Lato', system-ui, sans-serif;
+
+  /*
+   * Diskrete animasjoner. Brukes med `motion-safe:`, f.eks. `motion-safe:animate-rise`,
+   * slik at de skrus av for de som har valgt "redusert bevegelse" i systemet.
+   */
+  --animate-rise: rise 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) both; /* glir inn nedenfra */
+  --animate-fade: fade 1s ease both;
+  --animate-grow-x: grow-x 1.3s cubic-bezier(0.2, 0.7, 0.2, 1) both; /* linjer fylles fra venstre */
+  --animate-grow-y: grow-y 1.3s cubic-bezier(0.2, 0.7, 0.2, 1) both; /* søyler vokser opp */
+  --animate-draw: draw 1.6s cubic-bezier(0.3, 0.6, 0.2, 1) both; /* SVG-linjer tegnes (ringer, buer) */
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+  }
+  @keyframes fade {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes grow-x {
+    from {
+      transform: scaleX(0);
+    }
+  }
+  @keyframes grow-y {
+    from {
+      transform: scaleY(0);
+    }
+  }
+  @keyframes draw {
+    from {
+      stroke-dashoffset: 1;
+    }
+  }
 }
 
 @layer base {
@@ -29,8 +66,9 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
   }
-  /* Tall med lik bredde, så nedtellinger ikke «hopper» */
+  /* Tall med lik bredde og lik høyde, så nedtellinger ikke «hopper».
+     (Cormorant har ellers "gammeldagse" tall som går over og under linjen.) */
   .tabular {
-    font-variant-numeric: tabular-nums;
+    font-variant-numeric: lining-nums tabular-nums;
   }
 }
