@@ -49,9 +49,9 @@ export function planBlocks({
     const end = isoToOsloParts(s.endAt).time
     const task = tasks.find((t) => t.id === s.taskId)
     const title = s.kind === 'task' ? (task?.title ?? 'Oppgaveøkt') : task ? `Fagøkt · ${task.title}` : 'Fagøkt'
-    const status: Status =
-      s.status === 'moved' ? 'moved' : s.status === 'done' || s.status === 'partial' ? 'done' : timeStatus(clockToMinutes(start), clockToMinutes(end), nowMinutes)
-    blocks.push({ start, end, kind: s.kind === 'task' ? 'task' : 'subject', subjectId: s.subjectId, taskId: s.taskId, title, status })
+    // Status fra databasen (ferdig, delvis, ikke gjort, flyttet) går foran klokka.
+    const status: Status = s.status !== 'planned' ? s.status : timeStatus(clockToMinutes(start), clockToMinutes(end), nowMinutes)
+    blocks.push({ id: s.id, start, end, kind: s.kind === 'task' ? 'task' : 'subject', subjectId: s.subjectId, taskId: s.taskId, title, status })
   }
 
   return blocks.sort((a, b) => a.start.localeCompare(b.start))

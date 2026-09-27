@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { clockToMinutes, countdownText, isoToOsloParts, osloToIso, daysUntil, formatLongDate, formatShortDateTime, greetingFor, toOslo, weekNumber } from './time'
+import { clockToMinutes, countdownText, isAfter, isoToOsloParts, osloToIso, toUtcIso, daysUntil, formatLongDate, formatShortDateTime, greetingFor, toOslo, weekNumber } from './time'
 
 describe('greetingFor', () => {
   it('gir riktig hilsen på grensene', () => {
@@ -68,5 +68,16 @@ describe('frister i norsk tid', () => {
 
   it('går frem og tilbake uten å endre dag eller klokkeslett', () => {
     expect(isoToOsloParts(osloToIso('2026-10-02', '23:59'))).toEqual({ date: '2026-10-02', time: '23:59' })
+  })
+})
+
+describe('sammenligning av tidspunkt', () => {
+  // Denne feilen skjedde: en økt kl. 01:05 så ut til å ha startet kl. 00:01,
+  // fordi "…28T00:01+02:00" og "…27T23:05+00:00" ble sammenlignet som tekst.
+  it('sammenligner norsk tid og UTC riktig', () => {
+    const now = toOslo('2026-09-28T00:01:00+02:00')
+    expect(isAfter('2026-09-27T23:05:00+00:00', now)).toBe(true) // 01:05 norsk tid er etter 00:01
+    expect(isAfter('2026-09-27T22:00:00+00:00', now)).toBe(false)
+    expect(toUtcIso(now)).toBe('2026-09-27T22:01:00.000Z')
   })
 })

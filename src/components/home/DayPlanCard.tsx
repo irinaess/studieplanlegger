@@ -9,18 +9,39 @@ const PX_PER_MIN = 1.15
 const NEUTRAL = '#AC9C8D' // farge for hendelser uten fag
 
 const KIND_LABEL: Record<string, string> = { event: 'fast', task: 'oppgaveøkt', subject: 'fagøkt' }
+const STATUS_LABEL: Record<string, string> = { done: '✓', partial: 'delvis', skipped: 'ikke gjort', moved: 'flyttet', active: 'Nå' }
 
 /**
  * Dagens plan: en linje om hva som pågår nå, og en vertikal tidslinje der
  * hver økt er en blokk plassert etter klokkeslett. `actions` vises øverst til høyre,
  * `notice` (advarsler o.l.) under overskriften.
  */
-export function DayPlanCard({ blocks, subjects, now, actions, notice }: { blocks: PlanBlock[]; subjects: Subject[]; now: Date; actions?: ReactNode; notice?: ReactNode }) {
+export function DayPlanCard({
+  blocks,
+  subjects,
+  now,
+  actions,
+  notice,
+  runningSessionId,
+  onStartSession,
+}: {
+  blocks: PlanBlock[]
+  subjects: Subject[]
+  now: Date
+  actions?: ReactNode
+  notice?: ReactNode
+  runningSessionId?: string | null // økten fokus-timeren kjører nå
+  onStartSession?: (block: PlanBlock) => void
+}) {
   const subjectOf = (id?: string) => subjects.find((s) => s.id === id)
   const sessions = blocks.filter((b) => (b.kind === 'task' || b.kind === 'subject') && b.status !== 'moved')
   const minutes = sessions.reduce((sum, b) => sum + clockToMinutes(b.end) - clockToMinutes(b.start), 0)
   const current = blocks.find((b) => b.status === 'active' && b.kind !== 'lunch')
-  const currentSubject = subjectOf(current?.subjectId)
+  // Ingen pågående? Vis neste økt som ikke er gjort.
+  const next = current ? null : blocks.find((b) => b.status === 'planned' && (b.kind === 'task' || b.kind === 'subject'))
+  const highlighted = current ?? next
+  const currentSubject = subjectOf(highlighted?.subjectId)
+  const canStart = (b?: PlanBlock | null) => Boolean(b?.id && onStartSession && b.id !== runningSessionId)
 
   const from = Math.floor(Math.min(...blocks.map((b) => clockToMinutes(b.start))) / 60)
   const to = Math.ceil(Math.max(...blocks.map((b) => clockToMinutes(b.end))) / 60)
@@ -39,28 +60,50 @@ export function DayPlanCard({ blocks, subjects, now, actions, notice }: { blocks
 
       {notice}
 
-      {current && (
-        <p className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl bg-card px-4 py-3 text-sm">
-          <span className="text-[10px] uppercase tracking-[0.3em] text-burgundy">Nå</span>
+      {highlighted && (
+        <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl bg-card px-4 py-3 text-sm">
+          <span className="text-[10px] uppercase tracking-[0.3em] text-burgundy">{current ? 'Nå' : 'Neste'}</span>
           {currentSubject && <SubjectDot subject={currentSubject} />}
-          <span className="font-serif text-lg">{current.title}</span>
+          <span className="font-serif text-lg">{highlighted.title}</span>
           {currentSubject && (
             <span className="text-xs tracking-wider" style={{ color: readableOn(currentSubject.color) }}>
-              {currentSubject.code} · {KIND_LABEL[current.kind]}
+              {currentSubject.code} · {KIND_LABEL[highlighted.kind]}
             </span>
           )}
-          <span className="ml-auto text-xs text-muted tabular">
-            {current.start}–{current.end}
+          <span className="ml-auto flex items-center gap-3 text-xs text-muted tabular">
+            {highlighted.start}–{highlighted.end}
+            {highlighted.id && highlighted.id === runningSessionId && <span className="text-burgundy">Fokus pågår</span>}
+            {canStart(highlighted) && (
+              <button type="button" onClick={() => onStartSession!(highlighted)} className="min-h-9 rounded-full bg-burgundy px-4 text-xs text-paper hover:opacity-90">
+                Start fokus
+              </button>
+            )}
           </span>
-        </p>
+        </div>
       )}
 
-      {blocks.length > 0 && <Timeline blocks={blocks} subjectOf={subjectOf} from={from} to={to} now={now} />}
+      {blocks.length > 0 && <Timeline blocks={blocks} subjectOf={subjectOf} from={from} to={to} now={now} onStart={onStartSession} canStart={canStart} />}
     </section>
   )
 }
 
-function Timeline({ blocks, subjectOf, from, to, now }: { blocks: PlanBlock[]; subjectOf: (id?: string) => Subject | undefined; from: number; to: number; now: Date }) {
+function Timeline({
+  blocks,
+  subjectOf,
+  from,
+  to,
+  now,
+  onStart,
+  canStart,
+}: {
+  blocks: PlanBlock[]
+  subjectOf: (id?: string) => Subject | undefined
+  from: number
+  to: number
+  now: Date
+  onStart?: (block: PlanBlock) => void
+  canStart: (block: PlanBlock) => boolean
+}) {
   const y = (minutes: number) => (minutes - from * 60) * PX_PER_MIN
   const hours = Array.from({ length: to - from + 1 }, (_, i) => from + i)
   const nowMinutes = now.getHours() * 60 + now.getMinutes()
@@ -93,7 +136,9 @@ function Timeline({ blocks, subjectOf, from, to, now }: { blocks: PlanBlock[]; s
           const subject = subjectOf(b.subjectId)
           const color = subject?.color ?? NEUTRAL
           const active = b.status === 'active'
-          const faded = b.status === 'done' || b.status === 'past' || b.status === 'moved'
+          const faded = b.status === 'done' || b.status === 'past' || b.status === 'moved' || b.status === 'skipped'
+          // Økter som ikke er ferdige kan klikkes for å starte fokus
+          const clickable = (b.kind === 'task' || b.kind === 'subject') && (b.status === 'planned' || b.status === 'active' || b.status === 'partial') && canStart(b)
           const short = end - start < 40
 
           // Tre utseender: fast hendelse (skravert), pågående økt (fylt), andre økter (lys med stripe).
@@ -108,11 +153,14 @@ function Timeline({ blocks, subjectOf, from, to, now }: { blocks: PlanBlock[]; s
                 ? { backgroundColor: readableOn(color, '#FAF8F5', 5), color: '#FAF8F5' }
                 : { background: `linear-gradient(${withAlpha(color, 0.13)}, ${withAlpha(color, 0.13)}), var(--color-surface)`, borderLeft: `4px solid ${color}` }
 
+          const Tag = clickable ? 'button' : 'div'
           return (
-            <div
+            <Tag
               key={i}
+              {...(clickable ? { type: 'button' as const, onClick: () => onStart?.(b), title: `Start fokus: ${b.title}` } : {})}
               className={[
-                'absolute inset-x-0 flex justify-between gap-2 overflow-hidden rounded-xl px-3.5 text-sm motion-safe:animate-rise',
+                'absolute inset-x-0 flex justify-between gap-2 overflow-hidden rounded-xl px-3.5 text-left text-sm motion-safe:animate-rise',
+                clickable ? 'cursor-pointer transition hover:shadow-lift' : '',
                 short ? 'items-center' : 'items-start py-2',
                 faded ? 'opacity-55' : '',
                 active ? 'shadow-lift' : '',
@@ -120,15 +168,15 @@ function Timeline({ blocks, subjectOf, from, to, now }: { blocks: PlanBlock[]; s
               style={{ ...look, top, height, animationDelay: `${300 + i * 50}ms` }}
             >
               <span className={`min-w-0 ${short ? 'flex items-baseline gap-3' : ''}`}>
-                <span className={`block truncate font-serif text-lg leading-tight ${b.status === 'moved' ? 'line-through' : ''}`}>{b.title}</span>
+                <span className={`block truncate font-serif text-lg leading-tight ${b.status === 'moved' || b.status === 'skipped' ? 'line-through' : ''}`}>{b.title}</span>
                 <span className="block truncate text-[11px] tracking-wider opacity-80">
                   {subject ? `${subject.code} · ` : ''}
                   {b.start}–{b.end}
                   {b.kind === 'event' && ' · fast'}
                 </span>
               </span>
-              <span className="shrink-0 text-xs">{b.status === 'done' ? '✓' : active ? 'Nå' : b.status === 'moved' ? 'flyttet' : ''}</span>
-            </div>
+              <span className="shrink-0 text-xs">{STATUS_LABEL[b.status ?? ''] ?? ''}</span>
+            </Tag>
           )
         })}
 

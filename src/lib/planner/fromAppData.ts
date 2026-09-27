@@ -2,29 +2,12 @@
  * Bro mellom appen og algoritmen: gjør om kalender, oppgaver og innstillinger
  * til det planDay() trenger. Holdes ren (ingen database), så den kan testes.
  */
-import type { CalendarEvent, Settings, Subject, Task } from '../../types'
-import { isoWeekday, occurrencesOn, weekDates } from '../calendar'
+import type { CalendarEvent, Settings, Subject, Task, TimeLog } from '../../types'
+import { isoWeekday, occurrencesOn } from '../calendar'
 import { clockToMinutes, daysUntil } from '../time'
+import { hoursByDay, sumByDay } from '../weekHours'
 import { remainingMinutes } from './priorities'
 import type { Energy, PlanInput } from './types'
-
-/**
- * Timer per fag så langt denne uken, fra hendelser som teller med i ukemålet
- * (forelesninger, seminarer) og som allerede er ferdige.
- * Fra steg 6 kommer tiden fra fokus-timeren i tillegg (`loggedHours`).
- */
-export function weekHoursSoFar(events: CalendarEvent[], date: string, nowMinutes: number, loggedHours: Record<string, number> = {}): Record<string, number> {
-  const hours: Record<string, number> = { ...loggedHours }
-  for (const day of weekDates(date)) {
-    if (day > date) break
-    for (const o of occurrencesOn(events, day)) {
-      if (!o.event.countsAsStudy || !o.event.subjectId) continue
-      if (day === date && o.end > nowMinutes) continue // ikke ferdig ennå
-      hours[o.event.subjectId] = (hours[o.event.subjectId] ?? 0) + (o.end - o.start) / 60
-    }
-  }
-  return hours
-}
 
 export function buildPlanInput(args: {
   date: string // "yyyy-MM-dd"
@@ -36,12 +19,12 @@ export function buildPlanInput(args: {
   events: CalendarEvent[]
   subjects: Subject[]
   tasks: Task[]
-  loggedHours?: Record<string, number>
+  logs?: TimeLog[] // denne ukens tidslogger
   correctionFactors?: (task: Task) => number // steg 7
 }): PlanInput {
   const { date, now, settings } = args
   const nowMinutes = now.getHours() * 60 + now.getMinutes()
-  const hours = weekHoursSoFar(args.events, date, nowMinutes, args.loggedHours)
+  const hours = sumByDay(hoursByDay(args.events, args.logs ?? [], date, nowMinutes))
 
   return {
     start: clockToMinutes(args.start),

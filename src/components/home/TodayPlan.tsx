@@ -1,15 +1,18 @@
 import { useState } from 'react'
-import { useDayPlan, useStopDay } from '../../data/api'
+import { useNavigate } from 'react-router'
+import { useCheckin, useDayPlan, useStopDay } from '../../data/api'
+import { useFocus } from '../../focus/FocusContext'
 import { planBlocks } from '../../lib/dayPlanView'
-import { isoToOsloParts } from '../../lib/time'
-import type { CalendarEvent, Settings, Subject, Task } from '../../types'
+import { clockToMinutes, isAfter, isoToOsloParts, toUtcIso } from '../../lib/time'
+import type { CalendarEvent, PlanBlock, Settings, Subject, Task, TimeLog } from '../../types'
 import { PrimaryButton, SecondaryButton } from '../ui/Field'
+import { CheckinDialog } from './CheckinDialog'
 import { DayPlanCard } from './DayPlanCard'
 import { StartDayDialog } from './StartDayDialog'
 
 /**
  * Dagens plan på forsiden. Uten plan: "Start dagen". Med plan: tidslinjen,
- * "Ny plan" og "Jeg må gi meg for i dag".
+ * "Start fokus", "Ny plan", "Jeg må gi meg for i dag" og "Ferdig for i dag".
  */
 export function TodayPlan({
   today,
@@ -18,6 +21,7 @@ export function TodayPlan({
   subjects,
   events,
   tasks,
+  logs,
 }: {
   today: string
   now: Date
@@ -25,15 +29,35 @@ export function TodayPlan({
   subjects: Subject[]
   events: CalendarEvent[]
   tasks: Task[]
+  logs: TimeLog[] // denne ukens tidslogger (algoritmen bruker dem til ukemålet)
 }) {
   const planQuery = useDayPlan(today)
+  const checkin = useCheckin(today)
   const stop = useStopDay()
+  const focus = useFocus()
+  const navigate = useNavigate()
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [checkinOpen, setCheckinOpen] = useState(false)
   const [confirmStop, setConfirmStop] = useState(false)
   const plan = planQuery.data
 
+  /** Start fokus-timeren på en økt fra planen og gå til Fokus-siden. */
+  function startSession(block: PlanBlock) {
+    const session = plan?.sessions.find((s) => s.id === block.id)
+    if (!session) return
+    const left = session.plannedMinutes - (session.actualMinutes ?? 0)
+    focus.start({
+      subjectId: session.subjectId,
+      taskId: session.taskId,
+      sessionId: session.id,
+      title: block.title,
+      workMinutes: left > 0 ? left : clockToMinutes(block.end) - clockToMinutes(block.start),
+    })
+    navigate('/fokus')
+  }
+
   const dialog = dialogOpen && (
-    <StartDayDialog date={today} now={now} settings={settings} events={events} subjects={subjects} tasks={tasks} existing={plan ?? null} onClose={() => setDialogOpen(false)} />
+    <StartDayDialog date={today} now={now} settings={settings} events={events} subjects={subjects} tasks={tasks} logs={logs} existing={plan ?? null} onClose={() => setDialogOpen(false)} />
   )
 
   if (planQuery.isLoading) return <section className="h-64 rounded-[1.75rem] bg-surface shadow-soft" />
@@ -53,14 +77,17 @@ export function TodayPlan({
     )
   }
 
-  const nowIso = now.toISOString()
-  const hasRemaining = plan.sessions.some((s) => s.status === 'planned' && s.endAt > nowIso)
+  const nowIso = toUtcIso(now)
+  const hasRemaining = plan.sessions.some((s) => s.status === 'planned' && isAfter(s.endAt, now))
   const blocks = planBlocks({ plan, events, tasks, settings, nowMinutes: now.getHours() * 60 + now.getMinutes() })
 
   const actions = (
     <>
       <SecondaryButton type="button" onClick={() => setDialogOpen(true)} className="min-h-10 px-4">
         Ny plan
+      </SecondaryButton>
+      <SecondaryButton type="button" onClick={() => setCheckinOpen(true)} className="min-h-10 px-4">
+        {checkin.data ? 'Endre innsjekk' : 'Ferdig for i dag'}
       </SecondaryButton>
       {hasRemaining && !plan.stoppedAt && !confirmStop && (
         <SecondaryButton type="button" onClick={() => setConfirmStop(true)} className="min-h-10 px-4">
@@ -93,7 +120,7 @@ export function TodayPlan({
       )}
       {plan.stoppedAt && (
         <p className="mt-4 rounded-xl bg-card px-4 py-3 text-sm text-muted">
-          Du ga deg kl. {isoToOsloParts(plan.stoppedAt).time}. Resten er flyttet og kommer med i planene de neste dagene.
+          {checkin.data ? 'Du har sjekket inn for i dag.' : `Du ga deg kl. ${isoToOsloParts(plan.stoppedAt).time}.`} Det som ikke ble gjort, kommer med i planene de neste dagene.
         </p>
       )}
       {plan.warnings.map((w) => (
@@ -107,8 +134,17 @@ export function TodayPlan({
 
   return (
     <>
-      <DayPlanCard blocks={blocks} subjects={subjects} now={now} actions={actions} notice={notice} />
+      <DayPlanCard
+        blocks={blocks}
+        subjects={subjects}
+        now={now}
+        actions={actions}
+        notice={notice}
+        runningSessionId={focus.state?.sessionId ?? null}
+        onStartSession={startSession}
+      />
       {dialog}
+      {checkinOpen && <CheckinDialog plan={plan} subjects={subjects} tasks={tasks} now={now} existingNote={checkin.data?.note ?? null} onClose={() => setCheckinOpen(false)} />}
     </>
   )
 }

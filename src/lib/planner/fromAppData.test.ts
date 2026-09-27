@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { CalendarEvent, Settings, Subject, Task } from '../../types'
 import { toOslo } from '../time'
-import { buildPlanInput, weekHoursSoFar } from './fromAppData'
+import { buildPlanInput } from './fromAppData'
 
 const lecture: CalendarEvent = {
   id: 'e1', subjectId: 'mat', title: 'Forelesning', location: null, kind: 'recurring', weekday: 1, date: null,
@@ -12,15 +12,6 @@ const settings: Settings = {
   weeklyGoalHours: 40, examModeWeeks: 4, examWeeklyGoalHours: 45, semesterStart: null,
 }
 const subjects: Subject[] = [{ id: 'mat', code: 'MAT111', name: 'Kalkulus', color: '#72383D', weight: 4, weeklyGoalHours: 15, sortOrder: 1 }]
-
-describe('weekHoursSoFar', () => {
-  it('teller ferdige forelesninger denne uken, ikke de som gjenstår', () => {
-    // Mandag 28.9 kl. 11:00: forelesningen 10:15–12:00 er ikke ferdig
-    expect(weekHoursSoFar([lecture], '2026-09-28', 11 * 60)).toEqual({})
-    // Onsdag: mandagens forelesning (1,75 t) er med
-    expect(weekHoursSoFar([lecture], '2026-09-30', 8 * 60)).toEqual({ mat: 1.75 })
-  })
-})
 
 describe('buildPlanInput', () => {
   it('henter hendelser, frister og gjenstående arbeid', () => {
@@ -41,5 +32,13 @@ describe('buildPlanInput', () => {
     expect(input.tasks).toEqual([expect.objectContaining({ id: 't1', remainingMinutes: 180, deadlineDays: 1 })])
     expect(input.weekProgress).toBe(0)
     expect(input.settings.lunchStart).toBe(690)
+  })
+
+  it('regner med logget tid og ferdige forelesninger når den vurderer ukemålet', () => {
+    const input = buildPlanInput({
+      date: '2026-09-30', start: '08:00', end: '16:00', energy: 'normal', now: toOslo('2026-09-30T08:00:00+02:00'), settings, events: [lecture], subjects, tasks: [],
+      logs: [{ id: 'l', subjectId: 'mat', taskId: null, sessionId: null, startedAt: '2026-09-29T08:00:00Z', endedAt: '2026-09-29T09:00:00Z', minutes: 60, source: 'timer' }],
+    })
+    expect(input.subjects[0].hoursThisWeek).toBe(1.75 + 1) // mandagens forelesning + tirsdagens logg
   })
 })

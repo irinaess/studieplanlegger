@@ -6,7 +6,7 @@
  * Ved å samle oversettingen her, trenger resten av appen aldri å vite
  * hvordan tabellene ser ut.
  */
-import type { CalendarEvent, DayPlan, DayPlanSession, Settings, Subject, Subtask, Task } from '../types'
+import type { CalendarEvent, DayPlan, DayPlanSession, Settings, Subject, Subtask, Task, TimeLog } from '../types'
 
 export interface SubjectRow {
   id: string
@@ -262,5 +262,29 @@ export function rowToDayPlan(row: DayPlanRow): DayPlan {
         status: r.status,
       }))
       .sort((a, b) => a.startAt.localeCompare(b.startAt)),
+  }
+}
+
+export interface TimeLogRow {
+  id: string
+  subject_id: string
+  task_id: string | null
+  session_id: string | null
+  started_at: string
+  ended_at: string
+  minutes: number
+  source: TimeLog['source']
+}
+
+export function rowToTimeLog(r: TimeLogRow): TimeLog {
+  return {
+    id: r.id,
+    subjectId: r.subject_id,
+    taskId: r.task_id,
+    sessionId: r.session_id,
+    startedAt: r.started_at,
+    endedAt: r.ended_at,
+    minutes: r.minutes,
+    source: r.source,
   }
 }

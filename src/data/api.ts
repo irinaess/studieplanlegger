@@ -7,11 +7,13 @@
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
-import { minutesToClock } from '../lib/calendar'
+import { approveSessions } from '../lib/approval'
+import { minutesToClock, shiftDate } from '../lib/calendar'
+import { checkinChanges, type CheckinRow } from '../lib/checkin'
 import type { Energy, PlanOutput } from '../lib/planner/types'
 import { diffSubtasks } from '../lib/tasks'
 import { osloToIso } from '../lib/time'
-import type { CalendarEvent, DayPlan, Settings, Subject, Task, TaskDraft } from '../types'
+import type { CalendarEvent, DayPlan, Settings, Subject, Task, TaskDraft, TimeLog } from '../types'
 import {
   eventToRow,
   joinPriority,
@@ -20,6 +22,7 @@ import {
   rowToSettings,
   rowToSubject,
   rowToTask,
+  rowToTimeLog,
   settingsToRow,
   subjectToRow,
   taskToRow,
@@ -28,6 +31,7 @@ import {
   type SettingsRow,
   type SubjectRow,
   type TaskRow,
+  type TimeLogRow,
 } from './mappers'
 
 /** Supabase gir { data, error }. Denne gjør en feil om til et unntak TanStack Query forstår. */
@@ -263,7 +267,7 @@ export function useStopDay() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async ({ plan, tasks, nowIso }: { plan: DayPlan; tasks: Task[]; nowIso: string }) => {
-      const remaining = plan.sessions.filter((s) => s.status === 'planned' && s.endAt > nowIso)
+      const remaining = plan.sessions.filter((s) => s.status === 'planned' && Date.parse(s.endAt) > Date.parse(nowIso))
       if (remaining.length) unwrap(await supabase.from('plan_sessions').update({ status: 'moved' }).in('id', remaining.map((s) => s.id)))
 
       const movedTaskIds = new Set(remaining.filter((s) => s.kind === 'task' && s.taskId).map((s) => s.taskId!))
@@ -275,6 +279,118 @@ export function useStopDay() {
     onSuccess: (_data, { plan }) => {
       queryClient.invalidateQueries({ queryKey: ['dayPlan', plan.date] })
       queryClient.invalidateQueries({ queryKey: ['tasks'] })
+    },
+  })
+}
+
+// ---------- Tidslogger, fokus og kveldsinnsjekk ----------
+
+/** Midnatt i norsk tid for en dato, som ISO. */
+const dayStartIso = (date: string) => osloToIso(date, '00:00')
+
+async function fetchLogs(fromDate: string, days: number): Promise<TimeLog[]> {
+  const rows = unwrap<TimeLogRow[]>(
+    await supabase.from('time_logs').select('*').gte('started_at', dayStartIso(fromDate)).lt('started_at', dayStartIso(shiftDate(fromDate, days))).order('started_at'),
+  )
+  return rows.map(rowToTimeLog)
+}
+
+/** Tidslogger for uken som starter på mandagen `weekStart`. */
+export function useTimeLogs(weekStart: string) {
+  return useQuery({ queryKey: ['timeLogs', weekStart], queryFn: () => fetchLogs(weekStart, 7) })
+}
+
+/**
+ * Regner dagens økter på nytt ut fra all tid som er logget i dag,
+ * og lagrer statusene som er endret (se lib/approval.ts).
+ */
+async function reapproveDay(date: string) {
+  const row = unwrap<DayPlanRow | null>(await supabase.from('day_plans').select('*, plan_sessions(*)').eq('date', date).maybeSingle())
+  if (!row) return
+  const plan = rowToDayPlan(row)
+  const approved = approveSessions(plan.sessions, await fetchLogs(date, 1))
+  for (const s of plan.sessions) {
+    const next = approved.get(s.id)
+    if (next && (next.status !== s.status || next.actualMinutes !== (s.actualMinutes ?? 0))) {
+      unwrap(await supabase.from('plan_sessions').update({ status: next.status, actual_minutes: next.actualMinutes }).eq('id', s.id))
+    }
+  }
+}
+
+/** Logger tid fra fokus-timeren, og oppdaterer dagens økter. */
+export function useLogFocus() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (log: { date: string; subjectId: string; taskId: string | null; sessionId: string | null; startedAt: string; endedAt: string; minutes: number }) => {
+      unwrap(
+        await supabase.from('time_logs').insert({
+          subject_id: log.subjectId,
+          task_id: log.taskId,
+          session_id: log.sessionId,
+          started_at: log.startedAt,
+          ended_at: log.endedAt,
+          minutes: log.minutes,
+          source: 'timer',
+        }),
+      )
+      await reapproveDay(log.date)
+    },
+    onSuccess: (_d, log) => {
+      queryClient.invalidateQueries({ queryKey: ['timeLogs'] })
+      queryClient.invalidateQueries({ queryKey: ['dayPlan', log.date] })
+    },
+  })
+}
+
+/** Har du sjekket inn denne dagen? (notatet og når) */
+export function useCheckin(date: string) {
+  return useQuery({
+    queryKey: ['checkin', date],
+    queryFn: async () => unwrap<{ id: string; note: string | null } | null>(await supabase.from('checkins').select('id, note').eq('date', date).maybeSingle()),
+  })
+}
+
+/**
+ * Lagrer kveldsinnsjekken:
+ *  1. status og faktisk tid for hver økt
+ *  2. ekstra tidslogg for tid timeren ikke fikk med
+ *  3. oppgaver markert som ferdige → ferdig; uferdige oppgaver → flyttetelleren økes
+ *  4. økter som ikke har startet ennå → flyttet
+ *  5. selve innsjekken (med notat)
+ */
+export function useSaveCheckin() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (args: { plan: DayPlan; rows: CheckinRow[]; tasks: Task[]; tasksMarkedDone: Set<string>; note: string; nowIso: string }) => {
+      const { plan, rows, tasks, tasksMarkedDone, nowIso } = args
+      const changes = checkinChanges(rows, await fetchLogs(plan.date, 1), tasksMarkedDone)
+
+      for (const u of changes.sessionUpdates) {
+        unwrap(await supabase.from('plan_sessions').update({ status: u.status, actual_minutes: u.actualMinutes }).eq('id', u.id))
+      }
+      if (changes.extraLogs.length) {
+        unwrap(
+          await supabase.from('time_logs').insert(
+            changes.extraLogs.map((l) => ({ subject_id: l.subjectId, started_at: nowIso, ended_at: nowIso, minutes: l.minutes, source: 'checkin' })),
+          ),
+        )
+      }
+      for (const id of tasksMarkedDone) unwrap(await supabase.from('tasks').update({ status: 'done', completed_at: nowIso }).eq('id', id))
+      for (const task of tasks.filter((t) => changes.movedTaskIds.includes(t.id))) {
+        unwrap(await supabase.from('tasks').update({ move_count: task.moveCount + 1 }).eq('id', task.id))
+      }
+
+      const answered = new Set(rows.map((r) => r.sessionId))
+      const future = plan.sessions.filter((s) => s.status === 'planned' && !answered.has(s.id))
+      if (future.length) unwrap(await supabase.from('plan_sessions').update({ status: 'moved' }).in('id', future.map((s) => s.id)))
+      if (!plan.stoppedAt) unwrap(await supabase.from('day_plans').update({ stopped_at: nowIso }).eq('id', plan.id))
+
+      const existing = unwrap<{ id: string } | null>(await supabase.from('checkins').select('id').eq('date', plan.date).maybeSingle())
+      if (existing) unwrap(await supabase.from('checkins').update({ note: args.note.trim() || null }).eq('id', existing.id))
+      else unwrap(await supabase.from('checkins').insert({ date: plan.date, note: args.note.trim() || null }))
+    },
+    onSuccess: (_d, { plan }) => {
+      for (const key of [['dayPlan', plan.date], ['checkin', plan.date], ['timeLogs'], ['tasks']]) queryClient.invalidateQueries({ queryKey: key })
     },
   })
 }

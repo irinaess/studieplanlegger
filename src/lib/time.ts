@@ -86,3 +86,16 @@ export function isoToOsloParts(iso: string): { date: string; time: string } {
   const oslo = toOslo(iso)
   return { date: format(oslo, 'yyyy-MM-dd'), time: format(oslo, 'HH:mm') }
 }
+
+/**
+ * Tidspunkt som UTC-tekst ("…Z") til databasen.
+ * Obs: toISOString() på en TZDate gir norsk tid med "+02:00", så bruk alltid denne.
+ */
+export function toUtcIso(date: Date | number): string {
+  return new Date(typeof date === 'number' ? date : date.getTime()).toISOString()
+}
+
+/** Er ISO-tidspunktet `iso` senere enn `date`? Sammenligner som tall, ikke tekst. */
+export function isAfter(iso: string, date: Date): boolean {
+  return Date.parse(iso) > date.getTime()
+}

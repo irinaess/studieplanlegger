@@ -106,10 +106,23 @@ export interface PlanBlock {
   start: string // "10:15"
   end: string
   kind: PlanBlockKind
+  id?: string // økt-id fra databasen (bare for økter)
   subjectId?: string
   taskId?: string | null
   title: string
-  status?: 'done' | 'active' | 'planned' | 'past' | 'moved'
+  status?: 'done' | 'partial' | 'skipped' | 'active' | 'planned' | 'past' | 'moved'
+}
+
+/** Faktisk tid brukt, fra fokus-timeren eller kveldsinnsjekken. */
+export interface TimeLog {
+  id: string
+  subjectId: string
+  taskId: string | null
+  sessionId: string | null
+  startedAt: string // ISO
+  endedAt: string
+  minutes: number
+  source: 'timer' | 'manual' | 'checkin'
 }
 
 export type SessionStatus = 'planned' | 'done' | 'partial' | 'skipped' | 'moved'

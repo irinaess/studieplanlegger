@@ -5,8 +5,8 @@ import { buildPlanInput } from '../../lib/planner/fromAppData'
 import { planDay } from '../../lib/planner/planDay'
 import type { Energy } from '../../lib/planner/types'
 import { formatDuration } from '../../lib/tasks'
-import { clockToMinutes } from '../../lib/time'
-import type { CalendarEvent, DayPlan, Settings, Subject, Task } from '../../types'
+import { clockToMinutes, toUtcIso } from '../../lib/time'
+import type { CalendarEvent, DayPlan, Settings, Subject, Task, TimeLog } from '../../types'
 import { Field, PrimaryButton, SecondaryButton } from '../ui/Field'
 import { Modal } from '../ui/Modal'
 import { inputClass } from '../ui/styles'
@@ -28,6 +28,7 @@ export function StartDayDialog({
   events,
   subjects,
   tasks,
+  logs,
   existing,
   onClose,
 }: {
@@ -37,6 +38,7 @@ export function StartDayDialog({
   events: CalendarEvent[]
   subjects: Subject[]
   tasks: Task[]
+  logs: TimeLog[]
   existing: DayPlan | null
   onClose: () => void
 }) {
@@ -47,13 +49,13 @@ export function StartDayDialog({
   const save = useSaveDayPlan()
 
   const valid = clockToMinutes(end) > clockToMinutes(start)
-  const output = valid ? planDay(buildPlanInput({ date, start, end, energy, now, settings, events, subjects, tasks })) : null
+  const output = valid ? planDay(buildPlanInput({ date, start, end, energy, now, settings, events, subjects, tasks, logs })) : null
   const workMinutes = output?.sessions.reduce((sum, s) => sum + s.end - s.start, 0) ?? 0
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     if (!output) return
-    await save.mutateAsync({ date, start, end, energy, output, existing, nowIso: now.toISOString() })
+    await save.mutateAsync({ date, start, end, energy, output, existing, nowIso: toUtcIso(now) })
     onClose()
   }
 

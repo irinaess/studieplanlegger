@@ -1,10 +1,13 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router'
 import { Header } from './components/Header'
+import { FocusBar } from './focus/FocusBar'
+import { FocusProvider } from './focus/FocusProvider'
 import { useSession } from './hooks/useSession'
 import { isSupabaseConfigured, supabase } from './lib/supabase'
 import { CalendarPage } from './pages/CalendarPage'
 import { ComingSoonPage } from './pages/ComingSoonPage'
+import { FocusPage } from './pages/FocusPage'
 import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
 import { SettingsPage } from './pages/SettingsPage'
@@ -31,6 +34,7 @@ export default function App() {
           <Route index element={<HomePage />} />
           <Route path="kalender" element={<CalendarPage />} />
           <Route path="oppgaver" element={<TasksPage />} />
+          <Route path="fokus" element={<FocusPage />} />
           <Route path="statistikk" element={<ComingSoonPage title="Statistikk" step={7} />} />
           <Route path="eksamen" element={<ComingSoonPage title="Eksamen" step={8} />} />
           <Route path="innstillinger" element={<SettingsPage />} />
@@ -41,7 +45,10 @@ export default function App() {
   )
 }
 
-/** Rammen rundt alle sidene: bakgrunn, bredde og toppmeny. <Outlet /> er der siden vises. */
+/**
+ * Rammen rundt alle sidene: bakgrunn, bredde, toppmeny og fokus-timeren.
+ * <Outlet /> er der siden vises. FocusProvider ligger her, så timeren fortsetter når du bytter side.
+ */
 function Layout() {
   const queryClient = useQueryClient()
 
@@ -51,13 +58,16 @@ function Layout() {
   }
 
   return (
-    <div className="min-h-screen bg-linear-to-b from-paper via-paper to-[#f1ebe3]">
-      <div className="mx-auto max-w-6xl px-4 pt-6 pb-16 sm:px-8">
-        <Header onSignOut={signOut} />
-        <main className="mt-8">
-          <Outlet />
-        </main>
+    <FocusProvider>
+      <div className="min-h-screen bg-linear-to-b from-paper via-paper to-[#f1ebe3]">
+        <div className="mx-auto max-w-6xl px-4 pt-6 pb-28 sm:px-8">
+          <Header onSignOut={signOut} />
+          <main className="mt-8">
+            <Outlet />
+          </main>
+        </div>
+        <FocusBar />
       </div>
-    </div>
+    </FocusProvider>
   )
 }

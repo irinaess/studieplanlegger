@@ -4,6 +4,7 @@ const links = [
   { to: '/', label: 'Oversikt' },
   { to: '/kalender', label: 'Kalender' },
   { to: '/oppgaver', label: 'Oppgaver' },
+  { to: '/fokus', label: 'Fokus' },
   { to: '/statistikk', label: 'Statistikk' },
   { to: '/eksamen', label: 'Eksamen' },
   { to: '/innstillinger', label: 'Innstillinger' },
