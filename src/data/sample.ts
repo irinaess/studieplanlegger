@@ -6,9 +6,9 @@ import { addDays, set } from 'date-fns'
 import type { Exam, PlanBlock, Subject, Task } from '../types'
 
 export const subjects: Subject[] = [
-  { id: 'mat111', code: 'MAT111', name: 'Kalkulus', color: '#72383D', weight: 0.4, weeklyGoalHours: 15 },
-  { id: 'itok101', code: 'ITØK101', name: 'Mikroøkonomi', color: '#AC9C8D', weight: 0.4, weeklyGoalHours: 15 },
-  { id: 'info132', code: 'INFO132', name: 'Programmering', color: '#3E4A5C', weight: 0.2, weeklyGoalHours: 10 },
+  { id: 'mat111', code: 'MAT111', name: 'Kalkulus', color: '#72383D', weight: 4, weeklyGoalHours: 15 },
+  { id: 'itok101', code: 'ITØK101', name: 'Mikroøkonomi', color: '#AC9C8D', weight: 4, weeklyGoalHours: 15 },
+  { id: 'info132', code: 'INFO132', name: 'Programmering', color: '#3E4A5C', weight: 2, weeklyGoalHours: 10 },
 ]
 
 /** Frister relativt til i dag, så forsiden alltid ser "levende" ut. */
@@ -67,3 +67,24 @@ export const dayPlan: PlanBlock[] = [
 /** Kort forklaring på hvorfor dagen ser ut som den gjør (lages av algoritmen i steg 5). */
 export const dayPriority =
   'MAT111 har frist i morgen, så dagen startet med Oblig 3 mens energien var høy. ITØK101 får ettermiddagen, fordi faget ligger litt bak ukemålet.'
+
+/**
+ * Eksempeldataene over bruker egne fag-id-er ('mat111' osv.). Når fagene kommer
+ * fra databasen, har de andre id-er. Denne funksjonen kobler eksempeldataene til
+ * de ekte fagene via fagkoden, og dropper det som ikke har et matchende fag.
+ * Midlertidig: forsvinner når oppgaver, kalender og planer er ekte (steg 3–5).
+ */
+export function sampleFor(realSubjects: Subject[]) {
+  const idByCode = new Map(realSubjects.map((s) => [s.code, s.id]))
+  const realId = (sampleId: string) => idByCode.get(subjects.find((s) => s.id === sampleId)?.code ?? '')
+  const remapKeys = (record: Record<string, number>) =>
+    Object.fromEntries(Object.entries(record).flatMap(([id, h]) => (realId(id) ? [[realId(id)!, h]] : [])))
+
+  return {
+    tasks: tasks.flatMap((t) => (realId(t.subjectId) ? [{ ...t, subjectId: realId(t.subjectId)! }] : [])),
+    exams: exams.flatMap((e) => (realId(e.subjectId) ? [{ ...e, subjectId: realId(e.subjectId)! }] : [])),
+    dayPlan: dayPlan.flatMap((b) => (!b.subjectId ? [b] : realId(b.subjectId) ? [{ ...b, subjectId: realId(b.subjectId)! }] : [])),
+    hoursThisWeek: remapKeys(hoursThisWeek),
+    hoursByDay: hoursByDay.map(remapKeys),
+  }
+}

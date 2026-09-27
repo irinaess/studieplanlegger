@@ -7,8 +7,24 @@ export interface Subject {
   code: string // "MAT111"
   name: string // "Kalkulus"
   color: string // hovedfarge, f.eks. "#72383D"
-  weight: number // andel av studietiden (0–1), brukes av planleggeren
+  weight: number // relativ vekting 1–10; andelen er vekt / sum av alle vekter
   weeklyGoalHours: number
+  sortOrder?: number
+  archived?: boolean
+}
+
+/** Brukerens innstillinger. Klokkeslett lagres som "HH:mm". */
+export interface Settings {
+  displayName: string
+  workMinutes: number
+  breakMinutes: number
+  lunchMinutes: number
+  lunchStart: string
+  defaultEndTime: string
+  weeklyGoalHours: number
+  examModeWeeks: number
+  examWeeklyGoalHours: number
+  semesterStart: string | null
 }
 
 export type TaskType = 'oblig' | 'ovinger' | 'lesing' | 'annet'

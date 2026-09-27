@@ -1,62 +1,59 @@
-import { DayPlanCard } from './components/home/DayPlanCard'
-import { DeadlineStrip } from './components/home/DeadlineStrip'
-import { ExamCard } from './components/home/ExamCard'
-import { HeroCard } from './components/home/HeroCard'
-import { WeekRhythmCard } from './components/home/WeekRhythmCard'
+import { useQueryClient } from '@tanstack/react-query'
+import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router'
 import { Header } from './components/Header'
-import { Reveal } from './components/ui/Reveal'
-import {
-  dayPlan,
-  dayPriority,
-  exams,
-  hoursByDay,
-  hoursThisWeek,
-  semesterStart,
-  streakDays,
-  subjects,
-  tasks,
-  weeklyGoalHours,
-} from './data/sample'
-import { useNow } from './hooks/useNow'
+import { useSession } from './hooks/useSession'
+import { isSupabaseConfigured, supabase } from './lib/supabase'
+import { ComingSoonPage } from './pages/ComingSoonPage'
+import { HomePage } from './pages/HomePage'
+import { LoginPage } from './pages/LoginPage'
+import { SettingsPage } from './pages/SettingsPage'
+import { SetupNeededPage } from './pages/SetupNeededPage'
 
-/** Forsiden. Foreløpig med eksempeldata. Fra steg 2 kommer dataene fra Supabase. */
+/**
+ * Appens "portvakt":
+ *  1. Mangler .env? → oppsettside
+ *  2. Ikke logget inn? → innlogging
+ *  3. Ellers → sidene i appen
+ */
 export default function App() {
-  const now = useNow()
+  const { session, loading } = useSession()
+
+  if (!isSupabaseConfigured) return <SetupNeededPage />
+  if (loading) return null
+  if (!session) return <LoginPage />
+
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route element={<Layout />}>
+          <Route index element={<HomePage />} />
+          <Route path="kalender" element={<ComingSoonPage title="Kalender" step={3} />} />
+          <Route path="oppgaver" element={<ComingSoonPage title="Oppgaver" step={4} />} />
+          <Route path="statistikk" element={<ComingSoonPage title="Statistikk" step={7} />} />
+          <Route path="eksamen" element={<ComingSoonPage title="Eksamen" step={8} />} />
+          <Route path="innstillinger" element={<SettingsPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
+  )
+}
+
+/** Rammen rundt alle sidene: bakgrunn, bredde og toppmeny. <Outlet /> er der siden vises. */
+function Layout() {
+  const queryClient = useQueryClient()
+
+  async function signOut() {
+    await supabase.auth.signOut()
+    queryClient.clear() // glem dataene i minnet, så ingenting henger igjen etter utlogging
+  }
 
   return (
     <div className="min-h-screen bg-linear-to-b from-paper via-paper to-[#f1ebe3]">
       <div className="mx-auto max-w-6xl px-4 pt-6 pb-16 sm:px-8">
-        <Header />
-
-        <main className="mt-8 space-y-14">
-          <Reveal>
-            <HeroCard
-              now={now}
-              name="Iris"
-              subjects={subjects}
-              exams={exams}
-              hours={hoursThisWeek}
-              goal={weeklyGoalHours}
-              priority={dayPriority}
-              streak={streakDays}
-            />
-          </Reveal>
-
-          <DeadlineStrip tasks={tasks} subjects={subjects} now={now} />
-
-          <div className="grid gap-6 lg:grid-cols-[1.35fr_1fr]">
-            <Reveal delay={250}>
-              <DayPlanCard blocks={dayPlan} subjects={subjects} now={now} />
-            </Reveal>
-            <div className="space-y-6">
-              <Reveal delay={350}>
-                <WeekRhythmCard hoursByDay={hoursByDay} subjects={subjects} weeklyGoal={weeklyGoalHours} now={now} />
-              </Reveal>
-              <Reveal delay={450}>
-                <ExamCard exams={exams} subjects={subjects} now={now} semesterStart={semesterStart} />
-              </Reveal>
-            </div>
-          </div>
+        <Header onSignOut={signOut} />
+        <main className="mt-8">
+          <Outlet />
         </main>
       </div>
     </div>
