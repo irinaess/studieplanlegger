@@ -9,6 +9,7 @@ import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { SetupNeededPage } from './pages/SetupNeededPage'
+import { TasksPage } from './pages/TasksPage'
 
 /**
  * Appens "portvakt":
@@ -29,7 +30,7 @@ export default function App() {
         <Route element={<Layout />}>
           <Route index element={<HomePage />} />
           <Route path="kalender" element={<CalendarPage />} />
-          <Route path="oppgaver" element={<ComingSoonPage title="Oppgaver" step={4} />} />
+          <Route path="oppgaver" element={<TasksPage />} />
           <Route path="statistikk" element={<ComingSoonPage title="Statistikk" step={7} />} />
           <Route path="eksamen" element={<ComingSoonPage title="Eksamen" step={8} />} />
           <Route path="innstillinger" element={<SettingsPage />} />

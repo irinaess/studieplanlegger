@@ -6,7 +6,7 @@
  * Ved å samle oversettingen her, trenger resten av appen aldri å vite
  * hvordan tabellene ser ut.
  */
-import type { CalendarEvent, Settings, Subject } from '../types'
+import type { CalendarEvent, Settings, Subject, Subtask, Task } from '../types'
 
 export interface SubjectRow {
   id: string
@@ -144,5 +144,65 @@ export function eventToRow(e: Omit<CalendarEvent, 'id'>) {
     valid_until: recurring ? e.validUntil || null : null,
     counts_as_study: e.countsAsStudy,
     source: e.source,
+  }
+}
+
+export interface SubtaskRow {
+  id: string
+  title: string
+  done: boolean
+  sort_order: number
+}
+
+/** En oppgave med deloppgavene sine (hentet i én spørring med `select('*, subtasks(*)')`). */
+export interface TaskRow {
+  id: string
+  subject_id: string
+  title: string
+  type: Task['type']
+  estimate_minutes: number
+  deadline: string | null
+  starred: boolean
+  status: Task['status']
+  move_count: number
+  notes: string | null
+  completed_at: string | null
+  subtasks: SubtaskRow[]
+}
+
+export function rowToSubtask(row: SubtaskRow): Subtask {
+  return { id: row.id, title: row.title, done: row.done, sortOrder: row.sort_order }
+}
+
+export function rowToTask(row: TaskRow): Task {
+  return {
+    id: row.id,
+    subjectId: row.subject_id,
+    title: row.title,
+    type: row.type,
+    estimateMinutes: row.estimate_minutes,
+    deadline: row.deadline,
+    starred: row.starred,
+    status: row.status,
+    moveCount: row.move_count,
+    notes: row.notes,
+    completedAt: row.completed_at,
+    subtasks: (row.subtasks ?? []).map(rowToSubtask).sort((a, b) => a.sortOrder - b.sortOrder),
+  }
+}
+
+/** Feltene i selve oppgaven (deloppgavene lagres for seg). */
+export function taskToRow(t: Omit<Task, 'id' | 'subtasks'>) {
+  return {
+    subject_id: t.subjectId,
+    title: t.title.trim(),
+    type: t.type,
+    estimate_minutes: Math.max(1, Math.round(t.estimateMinutes)),
+    deadline: t.deadline,
+    starred: t.starred,
+    status: t.status,
+    move_count: t.moveCount,
+    notes: t.notes?.trim() || null,
+    completed_at: t.completedAt,
   }
 }

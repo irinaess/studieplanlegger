@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { clockToMinutes, countdownText, daysUntil, formatLongDate, formatShortDateTime, greetingFor, toOslo, weekNumber } from './time'
+import { clockToMinutes, countdownText, isoToOsloParts, osloToIso, daysUntil, formatLongDate, formatShortDateTime, greetingFor, toOslo, weekNumber } from './time'
 
 describe('greetingFor', () => {
   it('gir riktig hilsen på grensene', () => {
@@ -57,5 +57,16 @@ describe('clockToMinutes', () => {
     expect(clockToMinutes('00:00')).toBe(0)
     expect(clockToMinutes('10:15')).toBe(615)
     expect(clockToMinutes('16:00')).toBe(960)
+  })
+})
+
+describe('frister i norsk tid', () => {
+  it('regner om til UTC med riktig sommertid og vintertid', () => {
+    expect(osloToIso('2026-07-01', '12:00')).toBe('2026-07-01T10:00:00.000Z') // sommertid: +2
+    expect(osloToIso('2026-11-01', '12:00')).toBe('2026-11-01T11:00:00.000Z') // vintertid: +1
+  })
+
+  it('går frem og tilbake uten å endre dag eller klokkeslett', () => {
+    expect(isoToOsloParts(osloToIso('2026-10-02', '23:59'))).toEqual({ date: '2026-10-02', time: '23:59' })
   })
 })

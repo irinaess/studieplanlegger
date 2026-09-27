@@ -69,3 +69,20 @@ export function clockToMinutes(hhmm: string): number {
   const [h, m] = hhmm.split(':').map(Number)
   return h * 60 + m
 }
+
+/**
+ * Dato ("2026-10-02") og klokkeslett ("23:59") i norsk tid → ISO-tidspunkt til databasen.
+ * TZDate tar hensyn til sommertid, så 12:00 i juli og 12:00 i november blir riktig begge steder.
+ */
+export function osloToIso(date: string, time: string): string {
+  const [y, m, d] = date.split('-').map(Number)
+  const [h, min] = time.split(':').map(Number)
+  // Lagres alltid i UTC ("…Z"), så alle tidspunkt i databasen har samme form.
+  return new Date(new TZDate(y, m - 1, d, h, min, 0, TIME_ZONE).getTime()).toISOString()
+}
+
+/** ISO-tidspunkt → dato og klokkeslett i norsk tid, til skjemafelt. */
+export function isoToOsloParts(iso: string): { date: string; time: string } {
+  const oslo = toOslo(iso)
+  return { date: format(oslo, 'yyyy-MM-dd'), time: format(oslo, 'HH:mm') }
+}

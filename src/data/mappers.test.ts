@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { subjectShares } from '../lib/subjects'
-import { eventToRow, rowToEvent, rowToSettings, rowToSubject, settingsToRow, type SettingsRow } from './mappers'
+import { eventToRow, rowToEvent, rowToTask, taskToRow, rowToSettings, rowToSubject, settingsToRow, type SettingsRow } from './mappers'
 
 const settingsRow: SettingsRow = {
   display_name: 'Iris',
@@ -69,5 +69,21 @@ describe('hendelser', () => {
   it('fjerner dato fra faste hendelser, og tomt sted blir null', () => {
     const out = eventToRow({ ...rowToEvent(row), date: '2026-10-05', location: '  ' })
     expect(out).toMatchObject({ kind: 'recurring', weekday: 1, date: null, location: null })
+  })
+})
+
+describe('oppgaver', () => {
+  it('sorterer deloppgaver og runder estimatet', () => {
+    const t = rowToTask({
+      id: 't1', subject_id: 's1', title: ' Oblig 3 ', type: 'oblig', estimate_minutes: 360, deadline: null, starred: true,
+      status: 'todo', move_count: 0, notes: '', completed_at: null,
+      subtasks: [
+        { id: 'b', title: 'Oppg. 2', done: false, sort_order: 1 },
+        { id: 'a', title: 'Oppg. 1', done: true, sort_order: 0 },
+      ],
+    })
+    expect(t.subtasks.map((s) => s.id)).toEqual(['a', 'b'])
+    const row = taskToRow({ ...t, estimateMinutes: 89.6 })
+    expect(row).toMatchObject({ title: 'Oblig 3', estimate_minutes: 90, notes: null })
   })
 })

@@ -29,17 +29,32 @@ export interface Settings {
 
 export type TaskType = 'oblig' | 'ovinger' | 'lesing' | 'annet'
 
+export type TaskStatus = 'todo' | 'in_progress' | 'done'
+
+export interface Subtask {
+  id: string // nye deloppgaver som ikke er lagret ennå har id som starter med "new-"
+  title: string
+  done: boolean
+  sortOrder: number
+}
+
 export interface Task {
   id: string
   subjectId: string
   title: string
   type: TaskType
   estimateMinutes: number
-  deadline?: string // ISO-tidspunkt
+  deadline: string | null // ISO-tidspunkt
   starred: boolean
-  subtasksDone?: number
-  subtasksTotal?: number
+  status: TaskStatus
+  moveCount: number // hvor mange ganger oppgaven er flyttet til en annen dag
+  notes: string | null
+  completedAt: string | null
+  subtasks: Subtask[]
 }
+
+/** En oppgave som redigeres. Uten id = ny oppgave som ikke er lagret ennå. */
+export type TaskDraft = Omit<Task, 'id'> & { id?: string }
 
 /**
  * En hendelse i kalenderen.

@@ -4,18 +4,19 @@ import { ExamCard } from '../components/home/ExamCard'
 import { HeroCard } from '../components/home/HeroCard'
 import { WeekRhythmCard } from '../components/home/WeekRhythmCard'
 import { Reveal } from '../components/ui/Reveal'
-import { useSettings, useSubjects } from '../data/api'
+import { useSettings, useSubjects, useTasks } from '../data/api'
 import { dayPriority, sampleFor, semesterStart, streakDays } from '../data/sample'
 import { useNow } from '../hooks/useNow'
 
 /**
- * Forsiden. Fag og innstillinger kommer fra Supabase.
- * Oppgaver, eksamener, dagsplan og timer er fortsatt eksempeldata (ekte fra steg 3–7).
+ * Forsiden. Fag, innstillinger og frister kommer fra Supabase.
+ * Eksamener, dagsplan og timer er fortsatt eksempeldata (ekte fra steg 5–8).
  */
 export function HomePage() {
   const now = useNow()
   const subjectsQuery = useSubjects()
   const settingsQuery = useSettings()
+  const tasksQuery = useTasks()
 
   if (subjectsQuery.error || settingsQuery.error) {
     return <p className="mt-16 text-center text-sm text-burgundy">Kunne ikke hente data: {(subjectsQuery.error ?? settingsQuery.error)!.message}</p>
@@ -41,7 +42,7 @@ export function HomePage() {
         />
       </Reveal>
 
-      <DeadlineStrip tasks={sample.tasks} subjects={subjects} now={now} />
+      <DeadlineStrip tasks={tasksQuery.data ?? []} subjects={subjects} now={now} />
 
       <div className="grid gap-6 lg:grid-cols-[1.35fr_1fr]">
         <Reveal delay={250}>

@@ -21,7 +21,7 @@ export function Modal({ onClose, label, width = '28rem', children }: { onClose: 
       aria-label={label}
       onClose={onClose}
       onClick={(e) => e.target === ref.current && ref.current.close()}
-      className="m-auto max-h-[calc(100dvh-2rem)] rounded-2xl border border-line bg-surface p-0 text-ink backdrop:bg-ink/25"
+      className="m-auto max-h-[calc(100dvh-2rem)] overflow-x-hidden rounded-2xl border border-line bg-surface p-0 text-ink backdrop:bg-ink/25"
       style={{ width: `min(${width}, calc(100% - 2rem))` }}
     >
       <div className="p-6 sm:p-8">{children}</div>
