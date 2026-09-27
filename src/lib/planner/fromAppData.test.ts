@@ -34,6 +34,18 @@ describe('buildPlanInput', () => {
     expect(input.settings.lunchStart).toBe(690)
   })
 
+  it('bruker den lærte korreksjonsfaktoren på gjenstående arbeid', () => {
+    const oving: Task = {
+      id: 'o', subjectId: 'mat', title: 'Øving 6', type: 'ovinger', estimateMinutes: 100, deadline: null, starred: false,
+      status: 'todo', moveCount: 0, notes: null, completedAt: null, subtasks: [],
+    }
+    const input = buildPlanInput({
+      date: '2026-09-28', start: '08:00', end: '16:00', energy: 'normal', now: toOslo('2026-09-28T08:00:00+02:00'),
+      settings, events: [], subjects, tasks: [oving], correctionFactors: () => 1.3,
+    })
+    expect(input.tasks[0].remainingMinutes).toBe(130)
+  })
+
   it('regner med logget tid og ferdige forelesninger når den vurderer ukemålet', () => {
     const input = buildPlanInput({
       date: '2026-09-30', start: '08:00', end: '16:00', energy: 'normal', now: toOslo('2026-09-30T08:00:00+02:00'), settings, events: [lecture], subjects, tasks: [],

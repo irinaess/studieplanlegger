@@ -254,7 +254,10 @@ export function useSaveDayPlan() {
         )
       }
     },
-    onSuccess: (_data, args) => queryClient.invalidateQueries({ queryKey: ['dayPlan', args.date] }),
+    onSuccess: (_data, args) => {
+      queryClient.invalidateQueries({ queryKey: ['dayPlan', args.date] })
+      queryClient.invalidateQueries({ queryKey: ['dayPlans'] })
+    },
   })
 }
 
@@ -278,6 +281,7 @@ export function useStopDay() {
     },
     onSuccess: (_data, { plan }) => {
       queryClient.invalidateQueries({ queryKey: ['dayPlan', plan.date] })
+      queryClient.invalidateQueries({ queryKey: ['dayPlans'] })
       queryClient.invalidateQueries({ queryKey: ['tasks'] })
     },
   })
@@ -336,8 +340,7 @@ export function useLogFocus() {
       await reapproveDay(log.date)
     },
     onSuccess: (_d, log) => {
-      queryClient.invalidateQueries({ queryKey: ['timeLogs'] })
-      queryClient.invalidateQueries({ queryKey: ['dayPlan', log.date] })
+      for (const key of [['timeLogs'], ['dayPlan', log.date], ['dayPlans'], ['estimateData']]) queryClient.invalidateQueries({ queryKey: key })
     },
   })
 }
@@ -390,7 +393,60 @@ export function useSaveCheckin() {
       else unwrap(await supabase.from('checkins').insert({ date: plan.date, note: args.note.trim() || null }))
     },
     onSuccess: (_d, { plan }) => {
-      for (const key of [['dayPlan', plan.date], ['checkin', plan.date], ['timeLogs'], ['tasks']]) queryClient.invalidateQueries({ queryKey: key })
+      for (const key of [['dayPlan', plan.date], ['dayPlans'], ['checkin', plan.date], ['timeLogs'], ['tasks'], ['estimateData']]) queryClient.invalidateQueries({ queryKey: key })
     },
+  })
+}
+
+// ---------- Statistikk, estimater og ukesrapport ----------
+
+/** Alle dagsplaner mellom to datoer (til streak og ukesrapport). */
+export function useDayPlansRange(from: string, to: string) {
+  return useQuery({
+    queryKey: ['dayPlans', from, to],
+    queryFn: async () =>
+      unwrap<DayPlanRow[]>(await supabase.from('day_plans').select('*, plan_sessions(*)').gte('date', from).lte('date', to).order('date')).map(rowToDayPlan),
+  })
+}
+
+/**
+ * Faktisk tid per oppgave, til estimatlæringen: tidslogger med oppgave,
+ * og minutter fra oppgaveøkter (innsjekk). Henter bare de feltene som trengs.
+ */
+export function useEstimateData() {
+  return useQuery({
+    queryKey: ['estimateData'],
+    queryFn: async () => {
+      const logs = unwrap<{ task_id: string | null; minutes: number }[]>(await supabase.from('time_logs').select('task_id, minutes').not('task_id', 'is', null))
+      const sessions = unwrap<{ task_id: string | null; actual_minutes: number | null }[]>(
+        await supabase.from('plan_sessions').select('task_id, actual_minutes').eq('kind', 'task').not('actual_minutes', 'is', null),
+      )
+      return {
+        logs: logs.map((l) => ({ taskId: l.task_id, minutes: l.minutes })),
+        sessions: sessions.map((s) => ({ taskId: s.task_id, actualMinutes: s.actual_minutes })),
+      }
+    },
+  })
+}
+
+export type ReflectionAnswers = Record<string, { question: string; answer: string }>
+
+export function useWeeklyReview(weekStart: string) {
+  return useQuery({
+    queryKey: ['weeklyReview', weekStart],
+    queryFn: async () =>
+      unwrap<{ id: string; answers: ReflectionAnswers } | null>(await supabase.from('weekly_reviews').select('id, answers').eq('week_start', weekStart).maybeSingle()),
+  })
+}
+
+export function useSaveWeeklyReview() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ weekStart, answers }: { weekStart: string; answers: ReflectionAnswers }) => {
+      const existing = unwrap<{ id: string } | null>(await supabase.from('weekly_reviews').select('id').eq('week_start', weekStart).maybeSingle())
+      if (existing) unwrap(await supabase.from('weekly_reviews').update({ answers }).eq('id', existing.id))
+      else unwrap(await supabase.from('weekly_reviews').insert({ week_start: weekStart, answers }))
+    },
+    onSuccess: (_d, { weekStart }) => queryClient.invalidateQueries({ queryKey: ['weeklyReview', weekStart] }),
   })
 }

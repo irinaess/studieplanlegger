@@ -29,6 +29,7 @@ export function StartDayDialog({
   subjects,
   tasks,
   logs,
+  correctionFor,
   existing,
   onClose,
 }: {
@@ -39,6 +40,7 @@ export function StartDayDialog({
   subjects: Subject[]
   tasks: Task[]
   logs: TimeLog[]
+  correctionFor: (task: Task) => number // lærte estimater (steg 7)
   existing: DayPlan | null
   onClose: () => void
 }) {
@@ -49,7 +51,7 @@ export function StartDayDialog({
   const save = useSaveDayPlan()
 
   const valid = clockToMinutes(end) > clockToMinutes(start)
-  const output = valid ? planDay(buildPlanInput({ date, start, end, energy, now, settings, events, subjects, tasks, logs })) : null
+  const output = valid ? planDay(buildPlanInput({ date, start, end, energy, now, settings, events, subjects, tasks, logs, correctionFactors: correctionFor })) : null
   const workMinutes = output?.sessions.reduce((sum, s) => sum + s.end - s.start, 0) ?? 0
 
   async function handleSubmit(e: FormEvent) {

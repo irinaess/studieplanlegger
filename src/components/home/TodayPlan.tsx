@@ -22,6 +22,7 @@ export function TodayPlan({
   events,
   tasks,
   logs,
+  correctionFor,
 }: {
   today: string
   now: Date
@@ -30,6 +31,7 @@ export function TodayPlan({
   events: CalendarEvent[]
   tasks: Task[]
   logs: TimeLog[] // denne ukens tidslogger (algoritmen bruker dem til ukemålet)
+  correctionFor: (task: Task) => number
 }) {
   const planQuery = useDayPlan(today)
   const checkin = useCheckin(today)
@@ -57,7 +59,7 @@ export function TodayPlan({
   }
 
   const dialog = dialogOpen && (
-    <StartDayDialog date={today} now={now} settings={settings} events={events} subjects={subjects} tasks={tasks} logs={logs} existing={plan ?? null} onClose={() => setDialogOpen(false)} />
+    <StartDayDialog date={today} now={now} settings={settings} events={events} subjects={subjects} tasks={tasks} logs={logs} correctionFor={correctionFor} existing={plan ?? null} onClose={() => setDialogOpen(false)} />
   )
 
   if (planQuery.isLoading) return <section className="h-64 rounded-[1.75rem] bg-surface shadow-soft" />

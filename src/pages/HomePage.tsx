@@ -2,17 +2,19 @@ import { DeadlineStrip } from '../components/home/DeadlineStrip'
 import { ExamCard } from '../components/home/ExamCard'
 import { HeroCard } from '../components/home/HeroCard'
 import { TodayPlan } from '../components/home/TodayPlan'
+import { WeeklyReportCard } from '../components/stats/WeeklyReportCard'
 import { WeekRhythmCard } from '../components/home/WeekRhythmCard'
 import { Reveal } from '../components/ui/Reveal'
 import { useDayPlan, useEvents, useSettings, useSubjects, useTasks, useTimeLogs } from '../data/api'
-import { sampleFor, semesterStart, streakDays } from '../data/sample'
+import { sampleFor, semesterStart } from '../data/sample'
 import { useNow } from '../hooks/useNow'
-import { toDateKey, weekDates } from '../lib/calendar'
+import { useCorrections, useStreak, useWeekStats } from '../hooks/useStudyStats'
+import { isoWeekday, toDateKey, weekDates } from '../lib/calendar'
 import { hoursByDay, sumByDay } from '../lib/weekHours'
 
 /**
- * Forsiden. Alt kommer fra Supabase, bortsett fra eksamener (steg 8) og streak (steg 7),
- * som fortsatt er eksempeldata.
+ * Forsiden. Alt kommer fra Supabase, bortsett fra eksamenene (eksempeldata frem til steg 8).
+ * På søndager vises ukesrapporten øverst.
  */
 export function HomePage() {
   const now = useNow()
@@ -22,7 +24,12 @@ export function HomePage() {
   const eventsQuery = useEvents()
   const today = toDateKey(now)
   const planQuery = useDayPlan(today)
-  const logsQuery = useTimeLogs(weekDates(today)[0])
+  const weekStart = weekDates(today)[0]
+  const logsQuery = useTimeLogs(weekStart)
+  const { streak } = useStreak(today)
+  const { factorFor } = useCorrections()
+  const isSunday = isoWeekday(today) === 7
+  const weekStats = useWeekStats(weekStart, today)
 
   if (subjectsQuery.error || settingsQuery.error) {
     return <p className="mt-16 text-center text-sm text-burgundy">Kunne ikke hente data: {(subjectsQuery.error ?? settingsQuery.error)!.message}</p>
@@ -48,15 +55,22 @@ export function HomePage() {
           hours={sumByDay(byDay)}
           goal={settings.weeklyGoalHours}
           priority={planQuery.data?.priority || 'Start dagen, så forteller appen her hva du bør jobbe med i dag, og hvorfor.'}
-          streak={streakDays}
+          streak={streak}
         />
       </Reveal>
+
+      {/* Søndag: ukesrapporten vises på forsiden */}
+      {isSunday && weekStats && (
+        <Reveal delay={150}>
+          <WeeklyReportCard report={weekStats.report} weekStart={weekStart} title="Ukesrapport" />
+        </Reveal>
+      )}
 
       <DeadlineStrip tasks={tasksQuery.data ?? []} subjects={subjects} now={now} />
 
       <div className="grid gap-6 lg:grid-cols-[1.35fr_1fr]">
         <Reveal delay={250}>
-          <TodayPlan today={today} now={now} settings={settings} subjects={subjects} events={events} tasks={tasksQuery.data ?? []} logs={logs} />
+          <TodayPlan today={today} now={now} settings={settings} subjects={subjects} events={events} tasks={tasksQuery.data ?? []} logs={logs} correctionFor={factorFor} />
         </Reveal>
         <div className="space-y-6">
           <Reveal delay={350}>

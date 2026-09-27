@@ -1,5 +1,5 @@
 /**
- * Eksempeldata for det som ikke er ekte ennå: eksamener (steg 8) og streak (steg 7).
+ * Eksempeldata for det som ikke er ekte ennå: eksamener (steg 8).
  * Alt annet kommer fra Supabase.
  */
 import type { Exam, Subject } from '../types'
@@ -16,7 +16,6 @@ export const exams: Exam[] = [
   { subjectId: 'mat111', date: '2026-12-10T09:00:00+01:00' },
 ]
 
-export const streakDays = 4
 export const semesterStart = '2026-08-17'
 
 /**

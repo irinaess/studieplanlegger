@@ -11,6 +11,7 @@ import { FocusPage } from './pages/FocusPage'
 import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
 import { SettingsPage } from './pages/SettingsPage'
+import { StatsPage } from './pages/StatsPage'
 import { SetupNeededPage } from './pages/SetupNeededPage'
 import { TasksPage } from './pages/TasksPage'
 
@@ -35,7 +36,7 @@ export default function App() {
           <Route path="kalender" element={<CalendarPage />} />
           <Route path="oppgaver" element={<TasksPage />} />
           <Route path="fokus" element={<FocusPage />} />
-          <Route path="statistikk" element={<ComingSoonPage title="Statistikk" step={7} />} />
+          <Route path="statistikk" element={<StatsPage />} />
           <Route path="eksamen" element={<ComingSoonPage title="Eksamen" step={8} />} />
           <Route path="innstillinger" element={<SettingsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />

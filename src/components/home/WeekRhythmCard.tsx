@@ -9,12 +9,24 @@ const DAY_LABELS = ['Man', 'Tir', 'Ons', 'Tor', 'Fre', 'Lør', 'Søn']
  * Ukerytme: én søyle per dag (man–søn), stablet per fag,
  * med en stiplet linje for dagsmålet (ukemålet fordelt på fem dager).
  */
-export function WeekRhythmCard({ hoursByDay, subjects, weeklyGoal, now }: { hoursByDay: Record<string, number>[]; subjects: Subject[]; weeklyGoal: number; now: Date }) {
+export function WeekRhythmCard({
+  hoursByDay,
+  subjects,
+  weeklyGoal,
+  now,
+  highlightToday = true,
+}: {
+  hoursByDay: Record<string, number>[]
+  subjects: Subject[]
+  weeklyGoal: number
+  now: Date
+  highlightToday?: boolean // av når en annen uke vises
+}) {
   const dailyGoal = weeklyGoal / 5
   const dayTotals = hoursByDay.map((day) => Object.values(day).reduce((a, b) => a + b, 0))
   // Skalaen går litt over det høyeste av dagsmålet og den lengste dagen.
   const max = Math.max(dailyGoal, ...dayTotals) * 1.15
-  const today = (now.getDay() + 6) % 7 // getDay: søndag = 0, men uken vår starter mandag
+  const today = highlightToday ? (now.getDay() + 6) % 7 : -1 // getDay: søndag = 0, men uken vår starter mandag
 
   return (
     <section className="rounded-[1.75rem] bg-card p-6 shadow-soft sm:p-8">
