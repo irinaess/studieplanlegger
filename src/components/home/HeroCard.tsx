@@ -18,6 +18,7 @@ export function HeroCard({
   goal,
   priority,
   streak,
+  examMode = false,
 }: {
   now: Date
   name: string
@@ -27,6 +28,7 @@ export function HeroCard({
   goal: number
   priority: string
   streak: number
+  examMode?: boolean
 }) {
   const total = subjects.reduce((sum, s) => sum + (hours[s.id] ?? 0), 0)
   const examRows = exams
@@ -54,7 +56,7 @@ export function HeroCard({
               const close = days < 14
               return (
                 <li
-                  key={exam.subjectId}
+                  key={exam.id}
                   title={`Eksamen ${subject!.code}${exam.location ? `, ${exam.location}` : ''}`}
                   className="rounded-full px-3.5 py-1.5 text-xs tracking-wider"
                   style={{
@@ -97,6 +99,9 @@ export function HeroCard({
             <p className="mt-5 inline-block rounded-full bg-card px-3 py-1 text-xs text-muted">
               <span className="text-burgundy">✦</span> {streak} dager på rad
             </p>
+            {examMode && (
+              <p className="mt-2 block w-fit rounded-full bg-burgundy/10 px-3 py-1 text-xs text-burgundy">Eksamensmodus · ukemål {goal} t</p>
+            )}
           </div>
         </div>
       </div>

@@ -4,7 +4,8 @@ import { defaultOutcome, type CheckinRow, type Outcome } from '../../lib/checkin
 import { readableOn } from '../../lib/color'
 import { formatDuration } from '../../lib/tasks'
 import { isAfter, isoToOsloParts, toUtcIso } from '../../lib/time'
-import type { DayPlan, Subject, Task } from '../../types'
+import { sessionTitle } from '../../lib/dayPlanView'
+import type { DayPlan, ExamTopic, Subject, Task } from '../../types'
 import { Field, PrimaryButton, SecondaryButton } from '../ui/Field'
 import { Modal } from '../ui/Modal'
 import { inputClass } from '../ui/styles'
@@ -19,7 +20,23 @@ const OUTCOMES: [Outcome, string][] = [
  * "Ferdig for i dag": gå raskt gjennom dagens økter. Svarene er forhåndsutfylt
  * fra fokus-timeren, så du trenger bare å rette det som ikke stemmer.
  */
-export function CheckinDialog({ plan, subjects, tasks, now, existingNote, onClose }: { plan: DayPlan; subjects: Subject[]; tasks: Task[]; now: Date; existingNote: string | null; onClose: () => void }) {
+export function CheckinDialog({
+  plan,
+  subjects,
+  tasks,
+  topics,
+  now,
+  existingNote,
+  onClose,
+}: {
+  plan: DayPlan
+  subjects: Subject[]
+  tasks: Task[]
+  topics: ExamTopic[]
+  now: Date
+  existingNote: string | null
+  onClose: () => void
+}) {
   const nowIso = toUtcIso(now)
   // Økter som har startet, eller som timeren allerede har registrert. De som ikke har startet, flyttes automatisk.
   const sessions = plan.sessions.filter((s) => s.status !== 'moved' && (s.status !== 'planned' || !isAfter(s.startAt, now)))
@@ -68,7 +85,7 @@ export function CheckinDialog({ plan, subjects, tasks, now, existingNote, onClos
               <li key={r.sessionId} className="py-4">
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-serif text-lg">{r.kind === 'task' ? (task?.title ?? 'Oppgaveøkt') : task ? `Fagøkt · ${task.title}` : 'Fagøkt'}</p>
+                    <p className="truncate font-serif text-lg">{sessionTitle(session, tasks, topics)}</p>
                     <p className="text-xs text-muted tabular">
                       {subject && <span style={{ color: readableOn(subject.color, '#FFFEFC') }}>{subject.code} · </span>}
                       {isoToOsloParts(session.startAt).time}–{isoToOsloParts(session.endAt).time}

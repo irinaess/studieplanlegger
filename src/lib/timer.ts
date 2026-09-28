@@ -12,6 +12,7 @@ export interface TimerState {
   subjectId: string
   taskId: string | null
   sessionId: string | null // økten i dagsplanen, hvis timeren ble startet derfra
+  topicId?: string | null // eksamenstema, hvis det er en repetisjonsøkt
   title: string
   phase: Phase
   targetMs: number // lengden på denne fasen
@@ -31,13 +32,14 @@ export interface CompletedWork {
 const MINUTE = 60_000
 
 export function startTimer(
-  opts: { subjectId: string; taskId: string | null; sessionId: string | null; title: string; workMinutes: number; breakMinutes: number },
+  opts: { subjectId: string; taskId: string | null; sessionId: string | null; topicId?: string | null; title: string; workMinutes: number; breakMinutes: number },
   now: number,
 ): TimerState {
   return {
     subjectId: opts.subjectId,
     taskId: opts.taskId,
     sessionId: opts.sessionId,
+    topicId: opts.topicId ?? null,
     title: opts.title,
     phase: 'work',
     targetMs: opts.workMinutes * MINUTE,

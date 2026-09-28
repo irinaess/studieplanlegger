@@ -4,10 +4,31 @@ import { notify, requestNotificationPermission, unlockAudio } from '../lib/alert
 import { toDateKey } from '../lib/calendar'
 import * as timer from '../lib/timer'
 import { toOslo } from '../lib/time'
-import { FocusContext, type FocusApi, type StartOptions } from './FocusContext'
+import { FocusContext, type FocusApi, type PendingReview, type StartOptions } from './FocusContext'
 
 /** Timeren lagres i nettleseren, så den overlever at siden lastes på nytt. */
 const STORAGE_KEY = 'studieplanlegger.fokus'
+/** Logger som ikke kom frem (f.eks. uten nett), og som sendes på nytt senere. */
+const QUEUE_KEY = 'studieplanlegger.ventendeLogger'
+
+type FocusLog = Parameters<ReturnType<typeof useLogFocus>['mutateAsync']>[0]
+
+function loadQueue(): FocusLog[] {
+  try {
+    return JSON.parse(localStorage.getItem(QUEUE_KEY) ?? '[]') as FocusLog[]
+  } catch {
+    return []
+  }
+}
+
+function saveQueue(queue: FocusLog[]) {
+  try {
+    if (queue.length) localStorage.setItem(QUEUE_KEY, JSON.stringify(queue))
+    else localStorage.removeItem(QUEUE_KEY)
+  } catch {
+    // ignorer
+  }
+}
 
 function load(): timer.TimerState | null {
   try {
@@ -35,16 +56,57 @@ export function FocusProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<timer.TimerState | null>(load)
   const [now, setNow] = useState(() => Date.now())
   const [notice, setNotice] = useState<string | null>(null)
+  const [pendingReview, setPendingReview] = useState<PendingReview | null>(null)
   const settings = useSettings()
   const logFocus = useLogFocus()
 
   // Siste verdier i "refs", så intervallet under alltid ser ferske data.
   const stateRef = useRef(state)
   const loggedRef = useRef<number | null>(null) // hvilken økt (workStartedAt) som allerede er logget
-  const logRef = useRef(logFocus.mutate)
+  const logRef = useRef(logFocus.mutateAsync)
   useEffect(() => {
-    logRef.current = logFocus.mutate
-  }, [logFocus.mutate])
+    logRef.current = logFocus.mutateAsync
+  }, [logFocus.mutateAsync])
+
+  /**
+   * Sender en logg. Feiler det (f.eks. uten nett), legges den i en kø i nettleseren
+   * og sendes på nytt senere, så tiden aldri forsvinner i stillhet.
+   */
+  const send = useCallback(async (log: FocusLog) => {
+    try {
+      await logRef.current(log)
+      return true
+    } catch {
+      saveQueue([...loadQueue(), log])
+      setNotice('Fikk ikke lagret tiden akkurat nå. Den er tatt vare på og lagres når nettet er tilbake.')
+      return false
+    }
+  }, [])
+
+  // Prøv å sende ventende logger ved oppstart, hvert halve minutt og når nettet kommer tilbake.
+  useEffect(() => {
+    const flush = async () => {
+      const queue = loadQueue()
+      if (!queue.length || !navigator.onLine) return
+      saveQueue([])
+      const failed: FocusLog[] = []
+      for (const log of queue) {
+        try {
+          await logRef.current(log)
+        } catch {
+          failed.push(log)
+        }
+      }
+      saveQueue([...failed, ...loadQueue()])
+    }
+    flush()
+    const id = setInterval(flush, 30_000)
+    window.addEventListener('online', flush)
+    return () => {
+      clearInterval(id)
+      window.removeEventListener('online', flush)
+    }
+  }, [])
 
   const update = useCallback((next: timer.TimerState | null) => {
     stateRef.current = next
@@ -55,16 +117,19 @@ export function FocusProvider({ children }: { children: ReactNode }) {
   const logWork = useCallback((s: timer.TimerState, work: timer.CompletedWork) => {
     if (loggedRef.current === s.workStartedAt) return // aldri logg samme økt to ganger
     loggedRef.current = s.workStartedAt
-    logRef.current({
+    // Repetisjonsøkt ferdig: spør hvor trygg du er nå (vises på Fokus-siden).
+    if (s.topicId) setPendingReview({ topicId: s.topicId, title: s.title })
+    send({
       date: toDateKey(toOslo(work.startedAt)),
       subjectId: s.subjectId,
       taskId: s.taskId,
       sessionId: s.sessionId,
       startedAt: new Date(work.startedAt).toISOString(),
-      endedAt: new Date(work.endedAt).toISOString(),
+      // Databasen krever at slutt ikke er før start
+      endedAt: new Date(Math.max(work.endedAt, work.startedAt)).toISOString(),
       minutes: work.minutes,
     })
-  }, [])
+  }, [send])
 
   // Hvert sekund: oppdater klokka og sjekk om en fase er ferdig.
   useEffect(() => {
@@ -105,6 +170,8 @@ export function FocusProvider({ children }: { children: ReactNode }) {
       now,
       notice,
       dismissNotice: () => setNotice(null),
+      pendingReview,
+      clearPendingReview: () => setPendingReview(null),
       start: (opts: StartOptions) => {
         unlockAudio()
         requestNotificationPermission()
@@ -127,7 +194,7 @@ export function FocusProvider({ children }: { children: ReactNode }) {
         update(null)
       },
     }
-  }, [state, now, notice, settings.data?.breakMinutes, logWork, update])
+  }, [state, now, notice, pendingReview, settings.data?.breakMinutes, logWork, update])
 
   return <FocusContext.Provider value={api}>{children}</FocusContext.Provider>
 }

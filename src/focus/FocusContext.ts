@@ -5,8 +5,15 @@ export interface StartOptions {
   subjectId: string
   taskId: string | null
   sessionId: string | null
+  topicId?: string | null
   title: string
   workMinutes: number
+}
+
+/** Et tema du nettopp har repetert, og som venter på ny trygghet (1–5). */
+export interface PendingReview {
+  topicId: string
+  title: string
 }
 
 export interface FocusApi {
@@ -15,6 +22,8 @@ export interface FocusApi {
   /** Kort beskjed etter en fase, f.eks. "Pausen er over". */
   notice: string | null
   dismissNotice: () => void
+  pendingReview: PendingReview | null
+  clearPendingReview: () => void
   start: (opts: StartOptions) => void
   pause: () => void
   resume: () => void

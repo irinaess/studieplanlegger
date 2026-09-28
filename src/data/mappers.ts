@@ -6,7 +6,7 @@
  * Ved å samle oversettingen her, trenger resten av appen aldri å vite
  * hvordan tabellene ser ut.
  */
-import type { CalendarEvent, DayPlan, DayPlanSession, Settings, Subject, Subtask, Task, TimeLog } from '../types'
+import type { CalendarEvent, DayPlan, DayPlanSession, Exam, ExamTopic, Settings, Subject, Subtask, Task, TimeLog } from '../types'
 
 export interface SubjectRow {
   id: string
@@ -212,6 +212,7 @@ export interface PlanSessionRow {
   kind: DayPlanSession['kind']
   subject_id: string
   task_id: string | null
+  topic_id: string | null
   start_at: string
   end_at: string
   planned_minutes: number
@@ -255,6 +256,7 @@ export function rowToDayPlan(row: DayPlanRow): DayPlan {
         kind: r.kind,
         subjectId: r.subject_id,
         taskId: r.task_id,
+        topicId: r.topic_id,
         startAt: r.start_at,
         endAt: r.end_at,
         plannedMinutes: r.planned_minutes,
@@ -286,5 +288,40 @@ export function rowToTimeLog(r: TimeLogRow): TimeLog {
     endedAt: r.ended_at,
     minutes: r.minutes,
     source: r.source,
+  }
+}
+
+export interface ExamRow {
+  id: string
+  subject_id: string
+  starts_at: string
+  location: string | null
+}
+
+export function rowToExam(r: ExamRow): Exam {
+  return { id: r.id, subjectId: r.subject_id, date: r.starts_at, location: r.location }
+}
+
+export interface TopicRow {
+  id: string
+  subject_id: string
+  title: string
+  confidence: number
+  importance: ExamTopic['importance']
+  interval_days: number
+  next_review: string | null
+  sort_order: number
+}
+
+export function rowToTopic(r: TopicRow): ExamTopic {
+  return {
+    id: r.id,
+    subjectId: r.subject_id,
+    title: r.title,
+    confidence: r.confidence,
+    importance: r.importance,
+    intervalDays: r.interval_days,
+    nextReview: r.next_review,
+    sortOrder: r.sort_order,
   }
 }

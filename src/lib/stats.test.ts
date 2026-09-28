@@ -40,7 +40,7 @@ describe('estimatlæring', () => {
 })
 
 const s = (planned: number, actual: number | null, status: DayPlanSession['status']): DayPlanSession => ({
-  id: Math.random().toString(), kind: 'subject', subjectId: 'mat', taskId: null, startAt: '', endAt: '', plannedMinutes: planned, actualMinutes: actual, status,
+  id: Math.random().toString(), kind: 'subject', subjectId: 'mat', taskId: null, topicId: null, startAt: '', endAt: '', plannedMinutes: planned, actualMinutes: actual, status,
 })
 const plan = (date: string, sessions: DayPlanSession[]): DayPlan => ({ id: date, date, startTime: '08:00', endTime: '16:00', energy: 'normal', priority: '', warnings: [], stoppedAt: null, sessions })
 const good = (date: string) => plan(date, [s(50, 50, 'done'), s(50, 40, 'done'), s(50, 30, 'partial')]) // 120/150 = 80 %

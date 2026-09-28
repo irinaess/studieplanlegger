@@ -53,7 +53,7 @@ export function StatsPage() {
             <StreakCard streak={streak.streak} days={streak.days} />
           </div>
           <div className="grid gap-6 lg:grid-cols-[1fr_1.4fr]">
-            <WeekRhythmCard hoursByDay={stats.byDay} subjects={stats.subjects} weeklyGoal={stats.settings.weeklyGoalHours} now={now} highlightToday={isThisWeek} />
+            <WeekRhythmCard hoursByDay={stats.byDay} subjects={stats.subjects} weeklyGoal={stats.goal} now={now} highlightToday={isThisWeek} />
             <EstimatesCard corrections={list} subjects={stats.subjects} />
           </div>
           <div id="rapport">

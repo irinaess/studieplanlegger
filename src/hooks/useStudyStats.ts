@@ -3,9 +3,10 @@
  * Krokene henter data med TanStack Query og regner ut med de rene funksjonene i lib/.
  */
 import { useMemo } from 'react'
-import { useDayPlansRange, useEstimateData, useEvents, useSettings, useSubjects, useTasks, useTimeLogs } from '../data/api'
+import { useDayPlansRange, useEstimateData, useEvents, useExams, useSettings, useSubjects, useTasks, useTimeLogs } from '../data/api'
 import { shiftDate, weekDates } from '../lib/calendar'
 import { actualMinutesByTask, correctionFor, corrections, estimateSamples } from '../lib/estimates'
+import { effectiveWeeklyGoal } from '../lib/exam'
 import { currentStreak, recentDays } from '../lib/streak'
 import { osloNow } from '../lib/time'
 import { hoursByDay, sumByDay } from '../lib/weekHours'
@@ -43,9 +44,10 @@ export function useWeekStats(weekStart: string, today: string) {
   const plans = useDayPlansRange(dates[0], dates[6])
   const { actualByTask } = useCorrections()
   const { streak } = useStreak(today)
+  const exams = useExams()
 
   return useMemo(() => {
-    if (!subjects.data || !settings.data || !tasks.data || !events.data || !logs.data || !plans.data) return null
+    if (!subjects.data || !settings.data || !tasks.data || !events.data || !logs.data || !plans.data || !exams.data) return null
     const dates = weekDates(weekStart)
     // Uke som er over: hele uka. Denne uken: frem til nå. Fremtidig uke: ingen timer ennå.
     const lastDay = today < dates[6] ? today : dates[6]
@@ -57,12 +59,12 @@ export function useWeekStats(weekStart: string, today: string) {
       weekDates: dates,
       subjects: activeSubjects,
       hoursBySubject: sumByDay(byDay),
-      goal: settings.data.weeklyGoalHours,
+      goal: effectiveWeeklyGoal(settings.data, exams.data, dates[0] > today ? dates[0] : today < dates[6] ? today : dates[6]),
       tasks: tasks.data,
       plans: plans.data,
       actualByTask,
       streak,
     })
-    return { report, byDay, subjects: activeSubjects, settings: settings.data }
-  }, [weekStart, today, subjects.data, settings.data, tasks.data, events.data, logs.data, plans.data, actualByTask, streak])
+    return { report, byDay, subjects: activeSubjects, settings: settings.data, goal: report.goal }
+  }, [weekStart, today, subjects.data, settings.data, tasks.data, events.data, logs.data, plans.data, exams.data, actualByTask, streak])
 }

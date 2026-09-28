@@ -80,9 +80,24 @@ export interface CalendarEvent {
 }
 
 export interface Exam {
+  id: string
   subjectId: string
-  date: string // ISO-tidspunkt
-  location?: string
+  date: string // ISO-tidspunkt for start
+  location: string | null
+}
+
+export type Importance = 'low' | 'medium' | 'high'
+
+/** Et tema eller kapittel som skal repeteres før eksamen. */
+export interface ExamTopic {
+  id: string
+  subjectId: string
+  title: string
+  confidence: number // hvor trygg du er, 1–5
+  importance: Importance // hvor viktig til eksamen
+  intervalDays: number // spaced repetition: nåværende mellomrom
+  nextReview: string | null // "yyyy-MM-dd", null = ikke repetert ennå
+  sortOrder: number
 }
 
 /** Norske navn på oppgavetypene, til visning. */
@@ -100,7 +115,7 @@ export const TASK_TYPE_LABELS: Record<TaskType, string> = {
  *  - subject: fagøkt, godkjent når nok tid er logget i faget
  *  - pause / lunch
  */
-export type PlanBlockKind = 'event' | 'task' | 'subject' | 'pause' | 'lunch'
+export type PlanBlockKind = 'event' | 'task' | 'subject' | 'review' | 'pause' | 'lunch'
 
 export interface PlanBlock {
   start: string // "10:15"
@@ -109,6 +124,7 @@ export interface PlanBlock {
   id?: string // økt-id fra databasen (bare for økter)
   subjectId?: string
   taskId?: string | null
+  topicId?: string | null
   title: string
   status?: 'done' | 'partial' | 'skipped' | 'active' | 'planned' | 'past' | 'moved'
 }
@@ -133,6 +149,7 @@ export interface DayPlanSession {
   kind: 'task' | 'subject' | 'review'
   subjectId: string
   taskId: string | null
+  topicId: string | null // repetisjon: eksamenstemaet
   startAt: string // ISO-tidspunkt
   endAt: string
   plannedMinutes: number

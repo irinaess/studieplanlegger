@@ -4,7 +4,7 @@ import { useCheckin, useDayPlan, useStopDay } from '../../data/api'
 import { useFocus } from '../../focus/FocusContext'
 import { planBlocks } from '../../lib/dayPlanView'
 import { clockToMinutes, isAfter, isoToOsloParts, toUtcIso } from '../../lib/time'
-import type { CalendarEvent, PlanBlock, Settings, Subject, Task, TimeLog } from '../../types'
+import type { CalendarEvent, Exam, ExamTopic, PlanBlock, Settings, Subject, Task, TimeLog } from '../../types'
 import { PrimaryButton, SecondaryButton } from '../ui/Field'
 import { CheckinDialog } from './CheckinDialog'
 import { DayPlanCard } from './DayPlanCard'
@@ -23,6 +23,8 @@ export function TodayPlan({
   tasks,
   logs,
   correctionFor,
+  exams,
+  topics,
 }: {
   today: string
   now: Date
@@ -32,6 +34,8 @@ export function TodayPlan({
   tasks: Task[]
   logs: TimeLog[] // denne ukens tidslogger (algoritmen bruker dem til ukemålet)
   correctionFor: (task: Task) => number
+  exams: Exam[]
+  topics: ExamTopic[]
 }) {
   const planQuery = useDayPlan(today)
   const checkin = useCheckin(today)
@@ -52,6 +56,7 @@ export function TodayPlan({
       subjectId: session.subjectId,
       taskId: session.taskId,
       sessionId: session.id,
+      topicId: session.topicId,
       title: block.title,
       workMinutes: left > 0 ? left : clockToMinutes(block.end) - clockToMinutes(block.start),
     })
@@ -59,7 +64,7 @@ export function TodayPlan({
   }
 
   const dialog = dialogOpen && (
-    <StartDayDialog date={today} now={now} settings={settings} events={events} subjects={subjects} tasks={tasks} logs={logs} correctionFor={correctionFor} existing={plan ?? null} onClose={() => setDialogOpen(false)} />
+    <StartDayDialog date={today} now={now} settings={settings} events={events} subjects={subjects} tasks={tasks} logs={logs} correctionFor={correctionFor} exams={exams} topics={topics} existing={plan ?? null} onClose={() => setDialogOpen(false)} />
   )
 
   if (planQuery.isLoading) return <section className="h-64 rounded-[1.75rem] bg-surface shadow-soft" />
@@ -81,7 +86,7 @@ export function TodayPlan({
 
   const nowIso = toUtcIso(now)
   const hasRemaining = plan.sessions.some((s) => s.status === 'planned' && isAfter(s.endAt, now))
-  const blocks = planBlocks({ plan, events, tasks, settings, nowMinutes: now.getHours() * 60 + now.getMinutes() })
+  const blocks = planBlocks({ plan, events, tasks, topics, settings, nowMinutes: now.getHours() * 60 + now.getMinutes() })
 
   const actions = (
     <>
@@ -146,7 +151,7 @@ export function TodayPlan({
         onStartSession={startSession}
       />
       {dialog}
-      {checkinOpen && <CheckinDialog plan={plan} subjects={subjects} tasks={tasks} now={now} existingNote={checkin.data?.note ?? null} onClose={() => setCheckinOpen(false)} />}
+      {checkinOpen && <CheckinDialog plan={plan} subjects={subjects} tasks={tasks} topics={topics} now={now} existingNote={checkin.data?.note ?? null} onClose={() => setCheckinOpen(false)} />}
     </>
   )
 }

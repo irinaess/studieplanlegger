@@ -6,7 +6,7 @@ import { planDay } from '../../lib/planner/planDay'
 import type { Energy } from '../../lib/planner/types'
 import { formatDuration } from '../../lib/tasks'
 import { clockToMinutes, toUtcIso } from '../../lib/time'
-import type { CalendarEvent, DayPlan, Settings, Subject, Task, TimeLog } from '../../types'
+import type { CalendarEvent, DayPlan, Exam, ExamTopic, Settings, Subject, Task, TimeLog } from '../../types'
 import { Field, PrimaryButton, SecondaryButton } from '../ui/Field'
 import { Modal } from '../ui/Modal'
 import { inputClass } from '../ui/styles'
@@ -30,6 +30,8 @@ export function StartDayDialog({
   tasks,
   logs,
   correctionFor,
+  exams,
+  topics,
   existing,
   onClose,
 }: {
@@ -41,6 +43,8 @@ export function StartDayDialog({
   tasks: Task[]
   logs: TimeLog[]
   correctionFor: (task: Task) => number // lærte estimater (steg 7)
+  exams: Exam[] // eksamensmodus (steg 8)
+  topics: ExamTopic[]
   existing: DayPlan | null
   onClose: () => void
 }) {
@@ -51,7 +55,7 @@ export function StartDayDialog({
   const save = useSaveDayPlan()
 
   const valid = clockToMinutes(end) > clockToMinutes(start)
-  const output = valid ? planDay(buildPlanInput({ date, start, end, energy, now, settings, events, subjects, tasks, logs, correctionFactors: correctionFor })) : null
+  const output = valid ? planDay(buildPlanInput({ date, start, end, energy, now, settings, events, subjects, tasks, logs, correctionFactors: correctionFor, exams, topics })) : null
   const workMinutes = output?.sessions.reduce((sum, s) => sum + s.end - s.start, 0) ?? 0
 
   async function handleSubmit(e: FormEvent) {

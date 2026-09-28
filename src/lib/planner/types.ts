@@ -20,9 +20,14 @@ export interface PlannerSettings {
   lunchMinutes: number // f.eks. 30
 }
 
-/** En oppgave slik planleggeren ser den: bare det som trengs for å prioritere. */
+/**
+ * En oppgave slik planleggeren ser den: bare det som trengs for å prioritere.
+ * I eksamensmodus kan det også være et tema som skal repeteres (kind = 'review').
+ */
 export interface PlannerTask {
   id: string
+  kind?: 'task' | 'review'
+  reason?: string // for repetisjon: ferdig begrunnelse til "Dagens prioritet"
   subjectId: string
   title: string
   type: TaskType
@@ -52,9 +57,10 @@ export interface PlanInput {
 }
 
 export interface PlannedSession extends Interval {
-  kind: 'task' | 'subject' // oppgaveøkt eller fagøkt
+  kind: 'task' | 'subject' | 'review' // oppgaveøkt, fagøkt eller repetisjon
   subjectId: string
   taskId: string | null // for fagøkter: foreslått oppgave (valgfritt)
+  topicId: string | null // for repetisjon: temaet
   title: string
 }
 

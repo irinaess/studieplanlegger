@@ -24,7 +24,7 @@ export const LOW_ENERGY_SHARE = 0.7
 export const HEAVY_DAY_MAX_SESSIONS = 3
 
 interface Assignment {
-  kind: 'task' | 'subject'
+  kind: 'task' | 'subject' | 'review'
   task: PlannerTask | null
 }
 
@@ -77,13 +77,15 @@ export function planDay(input: PlanInput): PlanOutput {
     const assignments = fillBlock(block.subject, block.slots.length, tasks, remaining, work, energy)
     assignments.forEach((a, i) => {
       const slot = block.slots[i]
-      if (a.task && a.kind === 'task') tasksWithSessions.set(a.task.id, (tasksWithSessions.get(a.task.id) ?? 0) + 1)
+      if (a.task && a.kind !== 'subject') tasksWithSessions.set(a.task.id, (tasksWithSessions.get(a.task.id) ?? 0) + 1)
+      const review = a.kind === 'review'
       sessions.push({
         ...slot,
         kind: a.kind,
         subjectId: block.subject.id,
-        taskId: a.task?.id ?? null,
-        title: a.kind === 'task' ? a.task!.title : a.task ? `Fagøkt · ${a.task.title}` : 'Fagøkt',
+        taskId: review ? null : (a.task?.id ?? null),
+        topicId: review ? a.task!.id : null,
+        title: review ? `Repetisjon · ${a.task!.title}` : a.kind === 'task' ? a.task!.title : a.task ? `Fagøkt · ${a.task.title}` : 'Fagøkt',
       })
     })
   }
@@ -144,7 +146,7 @@ function fillBlock(
   let free = count
   const take = (task: PlannerTask, max: number) => {
     const n = Math.min(Math.ceil((remaining.get(task.id) ?? 0) / work), max)
-    for (let i = 0; i < n; i++) result.push({ kind: 'task', task })
+    for (let i = 0; i < n; i++) result.push({ kind: task.kind === 'review' ? 'review' : 'task', task })
     remaining.set(task.id, Math.max(0, (remaining.get(task.id) ?? 0) - n * work))
     return n
   }
@@ -159,7 +161,8 @@ function fillBlock(
     shouldCap -= n
   }
   // Resten: fagøkter med forslag. Lav energi foreslår lett arbeid (lesing) først.
-  const suggestions = [...should, ...normal].sort((a, b) => (energy === 'low' ? HEAVINESS[a.type] - HEAVINESS[b.type] : 0))
+  // Temaer til repetisjon foreslås ikke her; de får egne repetisjonsøkter.
+  const suggestions = [...should, ...normal].filter((t) => t.kind !== 'review').sort((a, b) => (energy === 'low' ? HEAVINESS[a.type] - HEAVINESS[b.type] : 0))
   while (free > 0) {
     const suggestion = suggestions.find((t) => (remaining.get(t.id) ?? 0) > 0) ?? null
     if (suggestion) remaining.set(suggestion.id, Math.max(0, remaining.get(suggestion.id)! - work))
@@ -197,9 +200,9 @@ function explain(ctx: {
   const parts: string[] = []
   const sessionsWord = (n: number) => (n === 1 ? '1 økt' : `${n} økter`)
 
-  // Det som haster mest og faktisk fikk tid
+  // Det som haster mest og faktisk fikk tid (oppgaver med frist/stjerne)
   const prioritized = ctx.tasks
-    .filter((t) => ctx.tasksWithSessions.has(t.id) && taskTier(t) !== 'normal')
+    .filter((t) => t.kind !== 'review' && ctx.tasksWithSessions.has(t.id) && taskTier(t) !== 'normal')
     .sort((a, b) => (a.deadlineDays ?? Infinity) - (b.deadlineDays ?? Infinity))[0]
   if (prioritized) {
     const n = ctx.tasksWithSessions.get(prioritized.id)!
@@ -208,6 +211,10 @@ function explain(ctx: {
     else if (prioritized.deadlineDays !== null && prioritized.deadlineDays <= 6) parts.push(`${prioritized.title} i ${code} har frist ${whenText(prioritized.deadlineDays)}, så den får ${sessionsWord(n)}.`)
     else parts.push(`${prioritized.title} i ${code} er stjernemerket og får ${sessionsWord(n)}.`)
   }
+
+  // Eksamensmodus: det viktigste temaet som fikk en repetisjonsøkt
+  const review = ctx.tasks.find((t) => t.kind === 'review' && ctx.tasksWithSessions.has(t.id))
+  if (review?.reason) parts.push(review.reason)
 
   // Hvordan dagen er delt
   const codes = ctx.blocks.map((b) => b.subject.code)
@@ -219,7 +226,7 @@ function explain(ctx: {
   if (ctx.energy === 'low') parts.push(`Lav energi: ${sessionsWord(ctx.slotsCount)} i dag, og lettere arbeid først.`)
 
   // Fag som ligger bak ukemålet (hvis ikke noe haster)
-  if (!prioritized) {
+  if (!prioritized && !review) {
     const behind = ctx.blocks
       .map((b) => ({ s: b.subject, hours: behindShare(b.subject, ctx.weekProgress) * b.subject.weeklyGoalHours }))
       .filter((x) => x.hours >= 1)

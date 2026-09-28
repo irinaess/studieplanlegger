@@ -13,25 +13,30 @@ import { checkinChanges, type CheckinRow } from '../lib/checkin'
 import type { Energy, PlanOutput } from '../lib/planner/types'
 import { diffSubtasks } from '../lib/tasks'
 import { osloToIso } from '../lib/time'
-import type { CalendarEvent, DayPlan, Settings, Subject, Task, TaskDraft, TimeLog } from '../types'
+import { scheduleNext } from '../lib/exam'
+import type { CalendarEvent, DayPlan, Exam, ExamTopic, Settings, Subject, Task, TaskDraft, TimeLog } from '../types'
 import {
   eventToRow,
   joinPriority,
   rowToDayPlan,
   rowToEvent,
+  rowToExam,
   rowToSettings,
   rowToSubject,
   rowToTask,
   rowToTimeLog,
+  rowToTopic,
   settingsToRow,
   subjectToRow,
   taskToRow,
   type DayPlanRow,
   type EventRow,
+  type ExamRow,
   type SettingsRow,
   type SubjectRow,
   type TaskRow,
   type TimeLogRow,
+  type TopicRow,
 } from './mappers'
 
 /** Supabase gir { data, error }. Denne gjør en feil om til et unntak TanStack Query forstår. */
@@ -246,6 +251,7 @@ export function useSaveDayPlan() {
               kind: s.kind,
               subject_id: s.subjectId,
               task_id: s.taskId,
+              topic_id: s.topicId,
               start_at: osloToIso(date, minutesToClock(s.start)),
               end_at: osloToIso(date, minutesToClock(s.end)),
               planned_minutes: s.end - s.start,
@@ -448,5 +454,81 @@ export function useSaveWeeklyReview() {
       else unwrap(await supabase.from('weekly_reviews').insert({ week_start: weekStart, answers }))
     },
     onSuccess: (_d, { weekStart }) => queryClient.invalidateQueries({ queryKey: ['weeklyReview', weekStart] }),
+  })
+}
+
+// ---------- Eksamener og temaer ----------
+
+export function useExams() {
+  return useQuery({
+    queryKey: ['exams'],
+    queryFn: async () => unwrap<ExamRow[]>(await supabase.from('exams').select('*').order('starts_at')).map(rowToExam),
+  })
+}
+
+export function useSaveExam() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (exam: Omit<Exam, 'id'> & { id?: string }) => {
+      const row = { subject_id: exam.subjectId, starts_at: exam.date, location: exam.location?.trim() || null }
+      if (exam.id) unwrap(await supabase.from('exams').update(row).eq('id', exam.id))
+      else unwrap(await supabase.from('exams').insert(row))
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['exams'] }),
+  })
+}
+
+export function useDeleteExam() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      unwrap(await supabase.from('exams').delete().eq('id', id))
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['exams'] }),
+  })
+}
+
+export function useTopics() {
+  return useQuery({
+    queryKey: ['topics'],
+    queryFn: async () => unwrap<TopicRow[]>(await supabase.from('exam_topics').select('*').order('sort_order').order('title')).map(rowToTopic),
+  })
+}
+
+export function useSaveTopic() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (topic: Pick<ExamTopic, 'subjectId' | 'title' | 'confidence' | 'importance'> & { id?: string; sortOrder?: number }) => {
+      const row = { subject_id: topic.subjectId, title: topic.title.trim(), confidence: topic.confidence, importance: topic.importance, sort_order: topic.sortOrder ?? 0 }
+      if (topic.id) unwrap(await supabase.from('exam_topics').update(row).eq('id', topic.id))
+      else unwrap(await supabase.from('exam_topics').insert(row))
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['topics'] }),
+  })
+}
+
+export function useDeleteTopic() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      unwrap(await supabase.from('exam_topics').delete().eq('id', id))
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['topics'] }),
+  })
+}
+
+/**
+ * Etter en repetisjon: lagre ny trygghet, logg repetisjonen, og regn ut når
+ * temaet skal repeteres neste gang (spaced repetition, se lib/exam.ts).
+ */
+export function useRecordReview() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ topic, confidence, today, examDate }: { topic: ExamTopic; confidence: number; today: string; examDate: string | null }) => {
+      const next = scheduleNext(topic.intervalDays, confidence, today, examDate)
+      unwrap(await supabase.from('topic_reviews').insert({ topic_id: topic.id, confidence_before: topic.confidence, confidence_after: confidence }))
+      unwrap(await supabase.from('exam_topics').update({ confidence, interval_days: next.intervalDays, next_review: next.nextReview }).eq('id', topic.id))
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['topics'] }),
   })
 }

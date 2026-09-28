@@ -4,7 +4,9 @@ import { Field, PrimaryButton, SecondaryButton } from '../components/ui/Field'
 import { ProgressRing } from '../components/ui/ProgressRing'
 import { SubjectDot } from '../components/ui/SubjectDot'
 import { inputClass } from '../components/ui/styles'
-import { useDayPlan, useSettings, useSubjects, useTasks } from '../data/api'
+import { ConfidencePicker } from '../components/exam/ConfidencePicker'
+import { useDayPlan, useExams, useRecordReview, useSettings, useSubjects, useTasks, useTopics } from '../data/api'
+import { sessionTitle } from '../lib/dayPlanView'
 import { toDateKey } from '../lib/calendar'
 import { readableOn } from '../lib/color'
 import { sortTasks } from '../lib/tasks'
@@ -14,7 +16,44 @@ import { isAfter, isoToOsloParts, osloNow } from '../lib/time'
 /** Fokus: stor nedtelling mens en økt pågår, ellers valg av neste økt. */
 export function FocusPage() {
   const focus = useFocus()
-  return <div className="motion-safe:animate-rise">{focus.state ? <RunningTimer /> : <StartFocus />}</div>
+  return (
+    <div className="space-y-6 motion-safe:animate-rise">
+      {focus.pendingReview && <ReviewPrompt />}
+      {focus.state ? <RunningTimer /> : <StartFocus />}
+    </div>
+  )
+}
+
+/** Etter en repetisjonsøkt: hvor trygg er du nå? Svaret styrer når temaet kommer igjen. */
+function ReviewPrompt() {
+  const { pendingReview, clearPendingReview } = useFocus()
+  const topics = useTopics()
+  const exams = useExams()
+  const record = useRecordReview()
+  const topic = topics.data?.find((t) => t.id === pendingReview!.topicId)
+  if (!topic) return null
+  const exam = exams.data?.find((e) => e.subjectId === topic.subjectId && isAfter(e.date, new Date()))
+
+  return (
+    <section className="mx-auto max-w-xl rounded-[1.75rem] bg-card p-6 text-center shadow-soft">
+      <p className="text-[11px] uppercase tracking-[0.3em] text-muted">Repetisjon ferdig</p>
+      <p className="mt-2 font-serif text-2xl">Hvor trygg er du nå på {topic.title.toLowerCase()}?</p>
+      <div className="mt-4 flex justify-center">
+        <ConfidencePicker
+          value={undefined}
+          disabled={record.isPending}
+          onChange={async (confidence) => {
+            await record.mutateAsync({ topic, confidence, today: toDateKey(osloNow()), examDate: exam ? isoToOsloParts(exam.date).date : null })
+            clearPendingReview()
+          }}
+        />
+      </div>
+      <p className="mt-3 text-xs text-muted">Lav trygghet gir ny repetisjon snart. Høy trygghet gir lengre tid til neste gang.</p>
+      <button type="button" onClick={clearPendingReview} className="mt-2 min-h-9 text-xs text-muted hover:text-ink">
+        Hopp over
+      </button>
+    </section>
+  )
 }
 
 function RunningTimer() {
@@ -69,6 +108,7 @@ function StartFocus() {
   const plan = useDayPlan(today)
   const subjectsQuery = useSubjects()
   const tasksQuery = useTasks()
+  const topicsQuery = useTopics()
   const settings = useSettings()
   const subjects = (subjectsQuery.data ?? []).filter((s) => !s.archived)
   const tasks = tasksQuery.data ?? []
@@ -83,10 +123,6 @@ function StartFocus() {
   const workMinutes = minutes ?? settings.data?.workMinutes ?? 50
   const subjectTasks = sortTasks(tasks.filter((t) => t.subjectId === chosenSubject && t.status !== 'done'))
 
-  const titleFor = (kind: string, id: string | null) => {
-    const task = tasks.find((t) => t.id === id)
-    return kind === 'task' ? (task?.title ?? 'Oppgaveøkt') : task ? `Fagøkt · ${task.title}` : 'Fagøkt'
-  }
 
   function startFree(e: FormEvent) {
     e.preventDefault()
@@ -115,7 +151,7 @@ function StartFocus() {
           <ul className="mt-4 divide-y divide-line">
             {upcoming.map((s) => {
               const subject = subjects.find((x) => x.id === s.subjectId)
-              const title = titleFor(s.kind, s.taskId)
+              const title = sessionTitle(s, tasks, topicsQuery.data ?? [])
               return (
                 <li key={s.id} className="flex items-center gap-4 py-3">
                   <span className="w-24 shrink-0 text-sm text-muted tabular">
@@ -130,7 +166,7 @@ function StartFocus() {
                       </span>
                     )}
                   </span>
-                  <SecondaryButton type="button" className="min-h-10 px-4" onClick={() => start({ subjectId: s.subjectId, taskId: s.taskId, sessionId: s.id, title, workMinutes: s.plannedMinutes - (s.actualMinutes ?? 0) || s.plannedMinutes })}>
+                  <SecondaryButton type="button" className="min-h-10 px-4" onClick={() => start({ subjectId: s.subjectId, taskId: s.taskId, sessionId: s.id, topicId: s.topicId, title, workMinutes: s.plannedMinutes - (s.actualMinutes ?? 0) || s.plannedMinutes })}>
                     Start
                   </SecondaryButton>
                 </li>

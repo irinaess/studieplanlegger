@@ -8,7 +8,7 @@ import { SubjectDot } from '../ui/SubjectDot'
 const PX_PER_MIN = 1.15
 const NEUTRAL = '#AC9C8D' // farge for hendelser uten fag
 
-const KIND_LABEL: Record<string, string> = { event: 'fast', task: 'oppgaveøkt', subject: 'fagøkt' }
+const KIND_LABEL: Record<string, string> = { event: 'fast', task: 'oppgaveøkt', subject: 'fagøkt', review: 'repetisjon' }
 const STATUS_LABEL: Record<string, string> = { done: '✓', partial: 'delvis', skipped: 'ikke gjort', moved: 'flyttet', active: 'Nå' }
 
 /**
@@ -34,11 +34,11 @@ export function DayPlanCard({
   onStartSession?: (block: PlanBlock) => void
 }) {
   const subjectOf = (id?: string) => subjects.find((s) => s.id === id)
-  const sessions = blocks.filter((b) => (b.kind === 'task' || b.kind === 'subject') && b.status !== 'moved')
+  const sessions = blocks.filter((b) => (b.kind === 'task' || b.kind === 'subject' || b.kind === 'review') && b.status !== 'moved')
   const minutes = sessions.reduce((sum, b) => sum + clockToMinutes(b.end) - clockToMinutes(b.start), 0)
   const current = blocks.find((b) => b.status === 'active' && b.kind !== 'lunch')
   // Ingen pågående? Vis neste økt som ikke er gjort.
-  const next = current ? null : blocks.find((b) => b.status === 'planned' && (b.kind === 'task' || b.kind === 'subject'))
+  const next = current ? null : blocks.find((b) => b.status === 'planned' && (b.kind === 'task' || b.kind === 'subject' || b.kind === 'review'))
   const highlighted = current ?? next
   const currentSubject = subjectOf(highlighted?.subjectId)
   const canStart = (b?: PlanBlock | null) => Boolean(b?.id && onStartSession && b.id !== runningSessionId)
@@ -138,7 +138,7 @@ function Timeline({
           const active = b.status === 'active'
           const faded = b.status === 'done' || b.status === 'past' || b.status === 'moved' || b.status === 'skipped'
           // Økter som ikke er ferdige kan klikkes for å starte fokus
-          const clickable = (b.kind === 'task' || b.kind === 'subject') && (b.status === 'planned' || b.status === 'active' || b.status === 'partial') && canStart(b)
+          const clickable = (b.kind === 'task' || b.kind === 'subject' || b.kind === 'review') && (b.status === 'planned' || b.status === 'active' || b.status === 'partial') && canStart(b)
           const short = end - start < 40
 
           // Tre utseender: fast hendelse (skravert), pågående økt (fylt), andre økter (lys med stripe).

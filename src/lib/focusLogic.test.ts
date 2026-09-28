@@ -6,7 +6,7 @@ import { osloToIso } from './time'
 import { hoursByDay, sumByDay } from './weekHours'
 
 const session = (id: string, subjectId: string, start: string, overrides: Partial<DayPlanSession> = {}): DayPlanSession => ({
-  id, kind: 'subject', subjectId, taskId: null, startAt: osloToIso('2026-09-28', start), endAt: osloToIso('2026-09-28', start),
+  id, kind: 'subject', subjectId, taskId: null, topicId: null, startAt: osloToIso('2026-09-28', start), endAt: osloToIso('2026-09-28', start),
   plannedMinutes: 50, actualMinutes: null, status: 'planned', ...overrides,
 })
 const log = (subjectId: string, minutes: number, sessionId: string | null = null, date = '2026-09-28'): TimeLog => ({

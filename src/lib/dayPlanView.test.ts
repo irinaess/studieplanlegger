@@ -9,7 +9,7 @@ const lecture: CalendarEvent = {
   startTime: '08:15', endTime: '10:00', validFrom: null, validUntil: null, countsAsStudy: true, source: 'manual',
 }
 const session = (id: string, start: string, end: string, status: DayPlan['sessions'][number]['status'] = 'planned') => ({
-  id, kind: 'subject' as const, subjectId: 'mat', taskId: null, startAt: osloToIso('2026-09-28', start), endAt: osloToIso('2026-09-28', end),
+  id, kind: 'subject' as const, subjectId: 'mat', taskId: null, topicId: null, startAt: osloToIso('2026-09-28', start), endAt: osloToIso('2026-09-28', end),
   plannedMinutes: 50, actualMinutes: null, status,
 })
 const plan: DayPlan = {

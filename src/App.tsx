@@ -6,7 +6,7 @@ import { FocusProvider } from './focus/FocusProvider'
 import { useSession } from './hooks/useSession'
 import { isSupabaseConfigured, supabase } from './lib/supabase'
 import { CalendarPage } from './pages/CalendarPage'
-import { ComingSoonPage } from './pages/ComingSoonPage'
+import { ExamPage } from './pages/ExamPage'
 import { FocusPage } from './pages/FocusPage'
 import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
@@ -37,7 +37,7 @@ export default function App() {
           <Route path="oppgaver" element={<TasksPage />} />
           <Route path="fokus" element={<FocusPage />} />
           <Route path="statistikk" element={<StatsPage />} />
-          <Route path="eksamen" element={<ComingSoonPage title="Eksamen" step={8} />} />
+          <Route path="eksamen" element={<ExamPage />} />
           <Route path="innstillinger" element={<SettingsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
