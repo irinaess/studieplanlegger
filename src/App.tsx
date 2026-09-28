@@ -1,19 +1,25 @@
 import { useQueryClient } from '@tanstack/react-query'
+import { lazy, Suspense } from 'react'
 import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router'
 import { Header } from './components/Header'
 import { FocusBar } from './focus/FocusBar'
 import { FocusProvider } from './focus/FocusProvider'
 import { useSession } from './hooks/useSession'
 import { isSupabaseConfigured, supabase } from './lib/supabase'
-import { CalendarPage } from './pages/CalendarPage'
-import { ExamPage } from './pages/ExamPage'
-import { FocusPage } from './pages/FocusPage'
 import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
-import { SettingsPage } from './pages/SettingsPage'
-import { StatsPage } from './pages/StatsPage'
 import { SetupNeededPage } from './pages/SetupNeededPage'
-import { TasksPage } from './pages/TasksPage'
+
+/**
+ * Sidene utenom forsiden lastes først når du åpner dem ("code splitting").
+ * Da blir første lasting raskere, særlig på iPad over mobilnett.
+ */
+const CalendarPage = lazy(() => import('./pages/CalendarPage').then((m) => ({ default: m.CalendarPage })))
+const TasksPage = lazy(() => import('./pages/TasksPage').then((m) => ({ default: m.TasksPage })))
+const FocusPage = lazy(() => import('./pages/FocusPage').then((m) => ({ default: m.FocusPage })))
+const StatsPage = lazy(() => import('./pages/StatsPage').then((m) => ({ default: m.StatsPage })))
+const ExamPage = lazy(() => import('./pages/ExamPage').then((m) => ({ default: m.ExamPage })))
+const SettingsPage = lazy(() => import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage })))
 
 /**
  * Appens "portvakt":
@@ -64,7 +70,10 @@ function Layout() {
         <div className="mx-auto max-w-6xl px-4 pt-6 pb-28 sm:px-8">
           <Header onSignOut={signOut} />
           <main className="mt-8">
-            <Outlet />
+            {/* Mens en side lastes, vises bare bakgrunnen (tar et øyeblikk første gang) */}
+            <Suspense fallback={null}>
+              <Outlet />
+            </Suspense>
           </main>
         </div>
         <FocusBar />

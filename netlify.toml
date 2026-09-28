@@ -1,0 +1,19 @@
+# Oppsett for Netlify: hvordan appen bygges og publiseres.
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "24"
+
+# Alle adresser (f.eks. /kalender) skal vise appen; React Router tar seg av resten.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Filer med hash i navnet endres aldri, så nettleseren kan huske dem lenge.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
